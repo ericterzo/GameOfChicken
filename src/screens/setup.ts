@@ -97,7 +97,7 @@ export const newYardScreen: Screen = (root, app) => {
   let friends: Profile[] = [];
   const inviteBlock = q('#invite-block');
   if (!app.profile.friends.length) {
-    inviteBlock.innerHTML = '<p class="muted small">Add friends under Flock and you can invite them from here.</p>';
+    inviteBlock.innerHTML = '<p class="invite-hint">Add friends under Flock and you can invite them from here.</p>';
   } else {
     inviteBlock.innerHTML = `<div class="field"><span class="label">Invite your flock</span>
       <div id="invite-list"><p class="muted small">Calling the flock…</p></div>

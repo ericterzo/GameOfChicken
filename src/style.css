@@ -179,3 +179,5 @@ input:not([type='checkbox']):not([type='radio']), select {
 .invitee { align-items: center; margin: 8px 0; }
 .invitee .board-chicken { width: 40px; }
 .pending { margin: 10px 0 0; }
+
+.invite-hint { color: var(--accent); font-weight: 700; }
