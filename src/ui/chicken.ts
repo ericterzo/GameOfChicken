@@ -96,7 +96,7 @@ export function iconSvg(pad = 0.12): string {
   const scale = (1 - pad * 2) * 5.12;
   const offset = 512 * pad;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-    <rect width="512" height="512" fill="#f2a03d"/>
+    <rect width="512" height="512" fill="#8ccb6e"/>
     <ellipse cx="256" cy="${offset + 95 * scale}" rx="${34 * scale}" ry="${4 * scale}" fill="#000" fill-opacity="0.15"/>
     <g transform="translate(${offset + 2 * scale} ${offset}) scale(${scale})">${chickenParts(white)}</g>
   </svg>`;
