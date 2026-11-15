@@ -1,4 +1,4 @@
-# Chicken Yard
+# The Game of Chicken
 
 A multiplayer game of chicken. Every player is a chicken sharing one feed pile in a **chicken yard**. Eating earns a point per second and carries on while you are away, but if another chicken walks into the yard while yours is eating, you lose that meal and they take a third of it.
 

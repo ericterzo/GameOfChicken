@@ -1,6 +1,6 @@
 {
-  "name": "Chicken Yard",
-  "short_name": "Chicken Yard",
+  "name": "The Game of Chicken",
+  "short_name": "Game of Chicken",
   "description": "A multiplayer game of chicken: eat while nobody is looking.",
   "start_url": "/",
   "scope": "/",

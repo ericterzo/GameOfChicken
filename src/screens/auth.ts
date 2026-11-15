@@ -28,7 +28,7 @@ export function authScreen(root: HTMLElement): void {
   root.innerHTML = `
     <section class="auth card">
       <div class="auth-hero">${chickenSvg(DEFAULT_LOOK, { px: 130, pecking: true })}</div>
-      <h1>Chicken Yard</h1>
+      <h1>The Game of Chicken</h1>
       <p class="muted">Eat while nobody is looking. Get caught and you lose the meal.</p>
       <form id="auth-form" autocomplete="on">
         <label>Username<input name="username" required minlength="3" maxlength="16" autocomplete="username" autocapitalize="none" spellcheck="false"></label>

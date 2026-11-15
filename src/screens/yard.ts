@@ -104,7 +104,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const url = `${location.origin}${location.pathname}#/join/${y.joinCode}`;
       const text = `Join my chicken yard "${y.name}". Code: ${y.joinCode}`;
       try {
-        if (navigator.share) await navigator.share({ title: 'Chicken Yard', text, url });
+        if (navigator.share) await navigator.share({ title: 'The Game of Chicken', text, url });
         else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Invite copied.', 'good'); }
       } catch { /* share sheet dismissed */ }
     };

@@ -34,7 +34,7 @@ function route(): void {
   window.scrollTo(0, 0);
 
   if (configMissing) {
-    root.innerHTML = `<section class="card"><h1>Chicken Yard is not connected yet</h1>
+    root.innerHTML = `<section class="card"><h1>The Game of Chicken is not connected yet</h1>
       <p>This build has no Firebase settings. Follow “Going online” in README.md, then build again.</p></section>`;
     return;
   }
@@ -52,7 +52,7 @@ function route(): void {
     `<a href="#/${key}" class="${name === key ? 'on' : ''}">${label}</a>`;
   root.innerHTML = `
     <header class="top">
-      <a class="brand" href="#/"><img src="/icons/icon.svg" alt="" width="32" height="32">Chicken Yard</a>
+      <a class="brand" href="#/"><img src="/icons/icon.svg" alt="" width="32" height="32">The Game of Chicken</a>
       <nav>${tab('', 'Yards')}${tab('chicken', 'My chicken')}${tab('flock', 'Flock')}</nav>
     </header>
     <main></main>
