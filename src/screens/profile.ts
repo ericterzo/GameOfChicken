@@ -1,9 +1,10 @@
 // "My chicken" (the personal chicken) and "Flock" (stats and friends).
 import type { Screen } from '../app';
-import { addFriend, getProfiles, removeFriend, saveLook, type Profile, type Stats } from '../api';
+import { addFriend, getLeaderboard, getProfiles, removeFriend, saveLook, type Profile, type Stats } from '../api';
 import { chickenSvg } from '../ui/chicken';
 import { busy, esc, num, toast } from '../ui/dom';
 import { lookEditor } from '../ui/lookEditor';
+import { statsTable, type StatCol } from '../ui/statsTable';
 
 export const chickenScreen: Screen = (root, app) => {
   const p = app.profile;
@@ -60,42 +61,9 @@ export const flockScreen: Screen = (root, app) => {
   const mine = root.querySelector<HTMLElement>('#mine')!;
   const friends = root.querySelector<HTMLElement>('#friends')!;
 
-  const table = root.querySelector<HTMLElement>('#table')!;
-  type Col = keyof Stats | 'username';
-  const COLS: [Col, string][] = [
-    ['username', 'Chicken'], ['wins', 'Won'], ['gamesPlayed', 'Played'], ['biggestChicken', 'Biggest'],
-    ['totalPoints', 'Eaten'], ['mealsStolen', 'Stolen'], ['mealsLost', 'Lost'],
-  ];
-  let sortKey: Col = 'wins';
-  let sortDesc = true;
+  const table = statsTable(root.querySelector<HTMLElement>('#table')!, { meUid: app.profile.uid });
   let friendProfiles: Profile[] = [];
-
-  const paintTable = () => {
-    const me = app.profile;
-    const value = (p: Profile) => (sortKey === 'username' ? p.username.toLowerCase() : p.stats[sortKey]);
-    const rows = [me, ...friendProfiles].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      if (x === y) return a.username.localeCompare(b.username);
-      return (x < y ? -1 : 1) * (sortDesc ? -1 : 1);
-    });
-    table.innerHTML = `<table class="flock-table">
-      <thead><tr>${COLS.map(([k, label]) => `<th scope="col" ${k === sortKey ? `aria-sort="${sortDesc ? 'descending' : 'ascending'}"` : ''}>
-        <button type="button" data-sort="${k}">${label}<span aria-hidden="true">${k === sortKey ? (sortDesc ? ' ▼' : ' ▲') : ''}</span></button></th>`).join('')}</tr></thead>
-      <tbody>${rows.map((p) => `<tr class="${p.uid === me.uid ? 'me' : ''}">
-        <th scope="row"><span class="cell-chicken">${chickenSvg(p.look, { px: 34 })}</span><span>${esc(p.username)}${p.uid === me.uid ? ' <small>(you)</small>' : ''}</span></th>
-        ${COLS.slice(1).map(([k]) => `<td>${num(p.stats[k as keyof Stats])}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table>`;
-  };
-
-  table.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-sort]');
-    if (!b) return;
-    const key = b.dataset.sort as Col;
-    if (key === sortKey) sortDesc = !sortDesc;
-    else { sortKey = key; sortDesc = key !== 'username'; } // numbers start biggest first, names A to Z
-    paintTable();
-  });
+  const paintTable = () => table.setRows([app.profile, ...friendProfiles]);
 
   const paintFriends = (list: Profile[]) => {
     friendProfiles = list;
@@ -141,4 +109,34 @@ export const flockScreen: Screen = (root, app) => {
   refresh();
   const stop = app.onProfile(refresh);
   return () => { alive = false; stop(); };
+};
+
+const TOP = 100;
+
+export const leaderboardScreen: Screen = (root, app) => {
+  let alive = true;
+  let request = 0;
+  root.innerHTML = `
+    <section class="card">
+      <h1>Leaderboard</h1>
+      <p class="muted small">Every chicken that has joined the game. Tap a column to rank by it; tap again to reverse. Shows the top ${TOP}.</p>
+      <div id="table" class="table-wrap"><p class="muted">Counting every chicken…</p></div>
+      <p class="muted small" id="board-note"></p>
+    </section>`;
+  const note = root.querySelector<HTMLElement>('#board-note')!;
+
+  const load = (key: StatCol, desc: boolean) => {
+    const mine = ++request;
+    void getLeaderboard(key, desc, TOP).then((rows) => {
+      if (!alive || mine !== request) return;
+      // Always show the player themselves, even from outside the top list.
+      const outside = !rows.some((p) => p.uid === app.profile.uid);
+      table.setRows(outside ? [...rows, app.profile] : rows);
+      note.textContent = outside ? `You are outside the top ${TOP} for this column; your row is added at the end.` : '';
+    }).catch(() => { if (alive && mine === request) note.textContent = 'Could not load the leaderboard. Check your connection.'; });
+  };
+
+  const table = statsTable(root.querySelector<HTMLElement>('#table')!, { meUid: app.profile.uid, ranked: true, onSort: load });
+  load('wins', true);
+  return () => { alive = false; };
 };

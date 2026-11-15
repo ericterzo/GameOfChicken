@@ -210,3 +210,8 @@ input:not([type='checkbox']):not([type='radio']), select {
 .flock-table tbody th small { font-weight: 400; color: var(--muted); }
 .flock-table .cell-chicken { width: 38px; }
 .flock-table tr.me th, .flock-table tr.me td { background: #f8ebd0; font-weight: 800; }
+
+.top nav a { padding: 8px 10px; }
+.flock-table .rank { width: 1%; text-align: right; color: var(--muted); font-size: 0.85rem; padding-right: 4px; }
+.flock-table thead .rank { font-weight: 700; padding: 0 4px 0 8px; }
+.flock-table tbody th[scope=row], .flock-table thead button[data-sort=username] { text-align: left; }

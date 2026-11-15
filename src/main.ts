@@ -4,7 +4,7 @@ import { isSigningUp, onUser, signOut, watchProfile, type Profile } from './api'
 import { configMissing } from './firebase';
 import { authScreen, usernameScreen } from './screens/auth';
 import { homeScreen } from './screens/home';
-import { chickenScreen, flockScreen } from './screens/profile';
+import { chickenScreen, flockScreen, leaderboardScreen } from './screens/profile';
 import { joinScreen, newYardScreen } from './screens/setup';
 import { yardScreen } from './screens/yard';
 import { esc } from './ui/dom';
@@ -24,7 +24,7 @@ const app: App = {
 };
 
 const ROUTES: Record<string, Screen> = {
-  '': homeScreen, new: newYardScreen, join: joinScreen, yard: yardScreen, chicken: chickenScreen, flock: flockScreen,
+  '': homeScreen, new: newYardScreen, join: joinScreen, yard: yardScreen, chicken: chickenScreen, flock: flockScreen, leaderboard: leaderboardScreen,
 };
 
 function route(): void {
@@ -53,7 +53,7 @@ function route(): void {
   root.innerHTML = `
     <header class="top">
       <a class="brand" href="#/"><img src="/icons/icon.svg" alt="" width="32" height="32">The Game of Chicken</a>
-      <nav>${tab('', 'Yards')}${tab('chicken', 'My chicken')}${tab('flock', 'Flock')}</nav>
+      <nav>${tab('', 'Yards')}${tab('chicken', 'My chicken')}${tab('flock', 'Flock')}${tab('leaderboard', 'Leaderboard')}</nav>
     </header>
     <main></main>
     <footer class="foot">Signed in as <strong>${esc(profile!.username)}</strong> · <button class="link" id="sign-out" type="button">Sign out</button></footer>`;

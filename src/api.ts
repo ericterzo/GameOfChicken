@@ -5,7 +5,7 @@ import {
   signInWithPopup, signOut as fbSignOut,
 } from 'firebase/auth';
 import {
-  addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, query,
+  addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
   runTransaction, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -167,6 +167,13 @@ export function watchProfile(uid: string, cb: (p: Profile | null) => void): () =
 export async function getProfiles(uids: string[]): Promise<Profile[]> {
   const snaps = await Promise.all(uids.map((u) => getDoc(doc(db, 'users', u))));
   return snaps.filter((s) => s.exists()).map((s) => toProfile(s.id, s.data()!));
+}
+
+/** The top players by one column of their record (or by name), for the global leaderboard. */
+export async function getLeaderboard(key: keyof Stats | 'username', desc: boolean, count: number): Promise<Profile[]> {
+  const field = key === 'username' ? 'username' : `stats.${key}`;
+  const snap = await getDocs(query(collection(db, 'users'), orderBy(field, desc ? 'desc' : 'asc'), limit(count)));
+  return snap.docs.map((d) => toProfile(d.id, d.data()));
 }
 
 export async function saveLook(uid: string, look: Look, lookEverywhere: boolean): Promise<void> {
