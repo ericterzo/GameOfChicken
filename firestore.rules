@@ -19,16 +19,22 @@ service cloud.firestore {
       // only signed-in players may browse.
       allow get: if true;
       allow list: if signedIn();
+      // A name is claimed once, for good (create only: an existing one can never be
+      // overwritten), together with the profile that uses it. Names are stored in
+      // lower case, so "Anna" and "anna" are the same name.
       allow create: if signedIn()
         && name.matches('^[a-z0-9_]{3,16}$')
         && request.resource.data.keys().hasOnly(['uid'])
-        && request.resource.data.uid == me();
+        && request.resource.data.uid == me()
+        && getAfter(/databases/$(database)/documents/users/$(me())).data.username.lower() == name;
     }
 
     match /users/{uid} {
       allow read: if signedIn();
+      // A profile can only carry a username its owner holds in the register above.
       allow create: if signedIn() && uid == me()
         && request.resource.data.username is string
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username.lower())).data.uid == me()
         && request.resource.data.stats.gamesPlayed == 0
         && request.resource.data.stats.wins == 0;
       allow update: if signedIn() && uid == me()

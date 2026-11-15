@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import {
   createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
 } from '../src/game/rules';
@@ -35,15 +35,41 @@ afterAll(() => env.cleanup());
 beforeEach(() => env.clearFirestore());
 
 describe('accounts', () => {
+  // The app always writes the name and the profile together.
+  function claim(uid: string, username: string, stats = { gamesPlayed: 0, wins: 0 }) {
+    const db = dbFor(uid);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'usernames', username.toLowerCase()), { uid });
+    batch.set(doc(db, 'users', uid), { username, stats });
+    return batch.commit();
+  }
+
   it('lets a player claim a username and profile for themselves only', async () => {
-    const profile = { username: 'Anna', stats: { gamesPlayed: 0, wins: 0 } };
-    await assertSucceeds(setDoc(doc(dbFor('anna'), 'usernames/anna'), { uid: 'anna' }));
-    await assertSucceeds(setDoc(doc(dbFor('anna'), 'users/anna'), profile));
-    await assertFails(setDoc(doc(dbFor('ben'), 'usernames/anna'), { uid: 'ben' }));
+    await assertSucceeds(claim('anna', 'Anna'));
     await assertFails(setDoc(doc(dbFor('ben'), 'usernames/carl'), { uid: 'anna' }));
-    await assertFails(setDoc(doc(dbFor('ben'), 'users/anna'), profile));
-    await assertFails(setDoc(doc(dbFor('ben'), 'users/ben'), { username: 'Ben', stats: { gamesPlayed: 9, wins: 9 } }));
+    await assertFails(setDoc(doc(dbFor('ben'), 'users/anna'), { username: 'Anna', stats: { gamesPlayed: 0, wins: 0 } }));
+    await assertFails(claim('ben', 'Ben', { gamesPlayed: 9, wins: 9 }));
     await assertFails(updateDoc(doc(dbFor('anna'), 'users/anna'), { username: 'Queen' }));
+  });
+
+  it('never lets two players hold the same username, whatever the capitals', async () => {
+    await assertSucceeds(claim('anna', 'Anna'));
+    await assertFails(claim('ben', 'Anna'));
+    await assertFails(claim('ben', 'ANNA'));
+    await assertFails(claim('ben', 'anna'));
+    // Not by overwriting the register entry either.
+    await assertFails(setDoc(doc(dbFor('ben'), 'usernames/anna'), { uid: 'ben' }));
+    await assertSucceeds(claim('ben', 'Ben'));
+  });
+
+  it('refuses a profile whose name its owner does not hold, and hoarding names', async () => {
+    // A profile on its own, borrowing someone's name for display.
+    await assertSucceeds(claim('anna', 'Anna'));
+    await assertFails(setDoc(doc(dbFor('ben'), 'users/ben'), { username: 'Anna', stats: { gamesPlayed: 0, wins: 0 } }));
+    // A name on its own, without the profile that uses it.
+    await assertFails(setDoc(doc(dbFor('ben'), 'usernames/spare'), { uid: 'ben' }));
+    // A second name for someone who already has one.
+    await assertFails(setDoc(doc(dbFor('anna'), 'usernames/anna2'), { uid: 'anna' }));
   });
 
   it('keeps everything from signed-out visitors', async () => {
