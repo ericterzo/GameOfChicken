@@ -347,6 +347,11 @@ export function createYard(
   };
 }
 
+/** A yard only counts towards lifetime records if at least two chickens joined it. */
+export function countsForRecords(yard: Yard): boolean {
+  return yard.memberUids.length >= 2;
+}
+
 // ---------- display helpers ----------
 
 /** Points to show for a chicken right now, including the meal in progress. */

@@ -327,6 +327,11 @@ export async function claimStats(uid: string, yardId: string): Promise<void> {
       const yard = ySnap.data() as Yard;
       const m = yard.members[uid];
       if (yard.status !== 'finished' || !m || m.statsClaimed) return;
+      if (!rules.countsForRecords(yard)) {
+        // A yard played alone is marked as dealt with but adds nothing to the record.
+        tx.update(yardRef(yardId), { [`members.${uid}.statsClaimed`]: true });
+        return;
+      }
       const s: Stats = { ...EMPTY_STATS, ...(uSnap.data().stats as Stats) };
       tx.update(doc(db, 'users', uid), {
         stats: {

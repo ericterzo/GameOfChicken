@@ -29,7 +29,7 @@ Ties share the win. Chickens grow with their points.
 ### Also
 
 - **My chicken**: a personal chicken (feathers, beak, comb) shown on the home screen and offered for every yard; optionally used everywhere without asking.
-- **Flock**: your record (yards won and played, biggest chicken, meals stolen and lost) and your friends', added by username.
+- **Flock**: your record (yards won and played, biggest chicken, meals stolen and lost) and your friends', added by username. Yards nobody else joined do not count.
 
 ## Running it on this computer
 

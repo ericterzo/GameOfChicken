@@ -43,7 +43,7 @@ export const flockScreen: Screen = (root, app) => {
   let loadedFor = '';
   root.innerHTML = `
     <section class="card"><h1>Your record</h1><div id="mine"></div>
-      <p class="muted small">Counts yards that have closed. “Biggest chicken” is your best score in a single yard.</p></section>
+      <p class="muted small">Counts closed yards that at least one other chicken joined. “Biggest chicken” is your best score in a single yard.</p></section>
     <section class="card">
       <h2>Your flock</h2>
       <form id="add" class="join">

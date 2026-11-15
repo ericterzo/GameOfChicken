@@ -2,8 +2,9 @@ import type { Screen } from '../app';
 import {
   claimStats, finalizeYard, markRead, watchInbox, watchMyYards, type InboxMessage, type YardDoc,
 } from '../api';
-import { MODE_NAMES, settle } from '../game/rules';
+import { countsForRecords, MODE_NAMES, settle } from '../game/rules';
 import { busy, esc, num, span } from '../ui/dom';
+import { installHelp } from '../ui/installHelp';
 import { yardScene } from '../ui/yardScene';
 
 export const homeScreen: Screen = (root, app) => {
@@ -28,7 +29,8 @@ export const homeScreen: Screen = (root, app) => {
     <section>
       <h2>Your yards</h2>
       <div id="yards"><p class="muted">Looking for your yards…</p></div>
-    </section>`;
+    </section>
+    ${installHelp()}`;
 
   const cosy = root.querySelector<HTMLElement>('#cosy-scene')!;
   const caption = root.querySelector<HTMLElement>('.cosy-caption')!;
@@ -88,6 +90,8 @@ export const homeScreen: Screen = (root, app) => {
       let line: string;
       if (y.status === 'active') {
         line = `Closes in ${span(y.endsAt - now)} · you have ${num(mine)}`;
+      } else if (!countsForRecords(y)) {
+        line = `Closed · solo yard, not counted · you had ${num(mine)}`;
       } else if (!y.winnerUids.length) {
         line = 'Closed · nobody ate';
       } else {

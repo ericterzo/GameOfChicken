@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createYard, isAsleep, join, leave, livePoints, maxMealSeconds, nextSleepStart, pileFraction,
+  countsForRecords, createYard, isAsleep, join, leave, livePoints, maxMealSeconds, nextSleepStart, pileFraction,
   RuleError, settle, sizeFor, startEating, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
@@ -280,6 +280,12 @@ describe('yard setup', () => {
     expect(() => make({ mode: 'fatHen', goal: null })).toThrow(RuleError);
     expect(make({ mode: 'lastGrain', goal: 500 }).goal).toBe(500);
     expect(make({ mode: 'sundown', goal: 500 }).goal).toBeNull();
+  });
+
+  it('only counts towards records once a second chicken has joined', () => {
+    const solo = make({});
+    expect(countsForRecords(solo)).toBe(false);
+    expect(countsForRecords(join(solo, 'b', 'Ben', look, T0))).toBe(true);
   });
 
   it('does nothing in a closed yard', () => {

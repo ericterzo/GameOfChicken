@@ -3,7 +3,7 @@
 import type { Screen } from '../app';
 import { leaveYard, startEating, stopEating, touchYard, watchYard, type YardDoc } from '../api';
 import {
-  isAsleep, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
+  countsForRecords, isAsleep, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
 } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
@@ -164,6 +164,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const headline = !names.length ? 'Nobody ate. No winner.'
         : `${names.join(' & ')} ${names.length === 1 && names[0] !== 'You' ? 'wins' : 'win'} the yard`;
       set('finished', `<h2>${esc(headline)}</h2><p class="muted">You finished with ${num(mine)} points. ${MODE_BLURBS[y.mode]}</p>
+        ${countsForRecords(y) ? '' : '<p class="muted small">Nobody else joined, so this yard does not count towards your record.</p>'}
         <a class="btn" href="#/">Back to your yards</a>`);
       return;
     }
