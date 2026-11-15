@@ -30,7 +30,14 @@ export const homeScreen: Screen = (root, app) => {
       <h2>Your yards</h2>
       <div id="yards"><p class="muted">Looking for your yards…</p></div>
     </section>
-    ${installHelp()}`;
+    ${installHelp()}
+    <section class="credits">
+      <img src="/credits/verdant-outpost-games.webp" alt="Verdant Outpost Games logo" width="96" height="96" loading="lazy">
+      <dl>
+        <div><dt>Creator</dt><dd>Eric Serra</dd></div>
+        <div><dt>Game studio</dt><dd>Verdant Outpost Games</dd></div>
+      </dl>
+    </section>`;
 
   const cosy = root.querySelector<HTMLElement>('#cosy-scene')!;
   const caption = root.querySelector<HTMLElement>('.cosy-caption')!;

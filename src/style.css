@@ -165,3 +165,9 @@ input:not([type='checkbox']):not([type='radio']), select {
 .install[open] summary { margin-bottom: 10px; }
 .install ol { margin: 0 0 10px; padding-left: 22px; line-height: 1.55; }
 .install h3 { margin-top: 14px; }
+
+.credits { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 28px 0 4px; padding-top: 20px; border-top: 1px solid var(--line); text-align: center; }
+.credits img { border-radius: 14px; background: #fff; }
+.credits dl { margin: 0; display: grid; gap: 8px; }
+.credits dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.credits dd { margin: 0; font-weight: 700; }
