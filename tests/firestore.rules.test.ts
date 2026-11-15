@@ -5,7 +5,9 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { createYard, join, settle, startEating, touch, type Look, type Yard } from '../src/game/rules';
+import {
+  createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
+} from '../src/game/rules';
 
 const look: Look = { body: '#fff', beak: 'short', beakColor: '#f90', comb: 'classic', combColor: '#d00' };
 let env: RulesTestEnvironment;
@@ -109,6 +111,34 @@ describe('yards', () => {
     await seed(hc);
     timed.eating!.endsAt = now + 60_000;
     await assertFails(setDoc(doc(dbFor('anna'), 'yards/y1'), timed));
+  });
+
+  it('handles invitations: decline, join, start, and nothing else', async () => {
+    const now = Date.now();
+    const y = freshYard({ invites: [{ uid: 'ben', username: 'Ben' }, { uid: 'carl', username: 'Carl' }], waitForInvites: true });
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), y));
+    // A stranger cannot decline for Ben, and Ben cannot touch anything but his own invitation.
+    await assertFails(setDoc(doc(dbFor('dora'), 'yards/y1'), declineInvite(y, 'ben', now)));
+    const sneaky = declineInvite(y, 'ben', now);
+    sneaky.members.anna.points = 0.5;
+    await assertFails(setDoc(doc(dbFor('ben'), 'yards/y1'), sneaky));
+    const afterBen = declineInvite(y, 'ben', now);
+    await assertSucceeds(setDoc(doc(dbFor('ben'), 'yards/y1'), afterBen));
+    // Carl accepts: the last answer starts the game with its length intact.
+    const started = join(afterBen, 'carl', 'Carl', look, Date.now());
+    await assertSucceeds(setDoc(doc(dbFor('carl'), 'yards/y1'), started));
+    // Once running, the clock cannot be moved again.
+    await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y1'), { endsAt: started.endsAt + 1000 }));
+    await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y1'), { status: 'waiting' }));
+  });
+
+  it('lets the owner start a waiting yard but not stretch it', async () => {
+    const y = freshYard({ invites: [{ uid: 'ben', username: 'Ben' }], waitForInvites: true });
+    await seed(y);
+    const longer = startNow(y, 'anna', Date.now());
+    longer.endsAt += 3600_000;
+    await assertFails(setDoc(doc(dbFor('anna'), 'yards/y1'), longer));
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), startNow(y, 'anna', Date.now())));
   });
 
   it('freezes scores once a yard is finished', async () => {

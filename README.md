@@ -29,6 +29,7 @@ Ties share the win. Chickens grow with their points.
 ### Also
 
 - **My chicken**: a personal chicken (feathers, beak, comb) shown on the home screen and offered for every yard; optionally used everywhere without asking.
+- **Invitations**: when starting a yard you can invite friends from your flock. They see the invitation on their home screen and accept or decline. With **Wait for everyone** the game only starts (and its clock only begins) once every invited chicken has answered; the owner can start it early. Codes and invite links keep working alongside.
 - **Flock**: your record (yards won and played, biggest chicken, meals stolen and lost) and your friends', added by username. Yards nobody else joined do not count.
 
 ## Running it on this computer

@@ -49,7 +49,25 @@ service cloud.firestore {
       function isMember() { return me() in before().memberUids; }
 
       function settingsUnchanged() {
-        return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids']);
+        return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
+                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt'])
+          && clockOk()
+          && !(after().status == 'waiting' && before().status != 'waiting');
+      }
+      // The clock only moves once: when a waiting yard starts, it keeps its length.
+      function clockOk() {
+        return (after().createdAt == before().createdAt && after().endsAt == before().endsAt)
+          || (before().status == 'waiting' && after().status == 'active'
+              && after().endsAt - after().createdAt == before().endsAt - before().createdAt
+              && after().createdAt > nowMs() - slack() && after().createdAt < nowMs() + slack());
+      }
+      // An invited player who is not a member may only take themselves off the list.
+      function declining() {
+        return !isMember()
+          && me() in before().invitedUids
+          && changed().hasOnly(['invitedUids', 'declinedUids', 'status', 'createdAt', 'endsAt'])
+          && after().invitedUids == before().invitedUids.removeAll([me()])
+          && after().declinedUids == before().declinedUids.concat([me()]);
       }
 
       // A brand new meal (not just a heartbeat on the current one).
@@ -73,7 +91,7 @@ service cloud.firestore {
       }
       function joining() {
         return !isMember()
-          && before().status == 'active'
+          && before().status != 'finished'
           && before().memberUids.size() < 12
           && after().memberUids == before().memberUids.concat([me()])
           && after().members.diff(before().members).affectedKeys().hasOnly([me()])
@@ -98,7 +116,7 @@ service cloud.firestore {
         && after().memberUids == [me()]
         && after().members.keys().hasOnly([me()])
         && after().members[me()].points == 0
-        && after().status == 'active'
+        && after().status in ['active', 'waiting']
         && after().eating == null
         && after().winnerUids.size() == 0
         && after().name is string && after().name.size() > 0 && after().name.size() <= 30
@@ -112,7 +130,7 @@ service cloud.firestore {
 
       allow update: if signedIn()
         && settingsUnchanged()
-        && (memberMove() || joining())
+        && (memberMove() || joining() || declining())
         && mealOk()
         && frozenOk();
     }

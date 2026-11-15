@@ -1,9 +1,9 @@
 // Creating a yard, and joining one by code. Both end with choosing a chicken.
 import type { App, Screen } from '../app';
-import { createYard, findYardByCode, joinYard } from '../api';
+import { createYard, findYardByCode, getProfiles, joinYard, type Profile } from '../api';
 import { MAX_YARD_MS, MODE_BLURBS, MODE_NAMES, type Look, type Mode, type NewYard } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
-import { busy, dateTime, el, esc, toast } from '../ui/dom';
+import { busy, dateTime, el, esc, span, toast } from '../ui/dom';
 import { lookEditor } from '../ui/lookEditor';
 
 const HOUR = 3600_000;
@@ -75,6 +75,8 @@ export const newYardScreen: Screen = (root, app) => {
         </div>
       </div>
 
+      <div id="invite-block"></div>
+
       <div id="picker"></div>
       <button class="btn primary" type="submit">Open the yard</button>
       <a class="link" href="#/">Cancel</a>
@@ -84,6 +86,25 @@ export const newYardScreen: Screen = (root, app) => {
   const picker = chickenPicker(app);
   form.querySelector('#picker')!.append(picker.node);
   const q = <T extends HTMLElement>(sel: string) => form.querySelector<T>(sel)!;
+
+  // Friends can be invited straight away; they answer from their home screen.
+  let friends: Profile[] = [];
+  const inviteBlock = q('#invite-block');
+  if (!app.profile.friends.length) {
+    inviteBlock.innerHTML = '<p class="muted small">Add friends under Flock and you can invite them from here.</p>';
+  } else {
+    inviteBlock.innerHTML = `<div class="field"><span class="label">Invite your flock</span>
+      <div id="invite-list"><p class="muted small">Calling the flock…</p></div>
+      <label class="check"><input type="checkbox" name="waitForInvites">
+        <span><strong>Wait for everyone</strong><small>The game only starts once every invited chicken has joined or declined. You can still start it yourself.</small></span></label>
+    </div>`;
+    void getProfiles(app.profile.friends).then((list) => {
+      friends = list.sort((a, b) => a.username.localeCompare(b.username));
+      q('#invite-list').innerHTML = friends.map((f) => `<label class="check invitee">
+        <input type="checkbox" name="invite" value="${esc(f.uid)}">
+        <span class="board-chicken">${chickenSvg(f.look, { px: 36 })}</span><span><strong>${esc(f.username)}</strong></span></label>`).join('');
+    });
+  }
 
   const toLocalInput = (t: number) => {
     const d = new Date(t - new Date(t).getTimezoneOffset() * 60000);
@@ -125,8 +146,11 @@ export const newYardScreen: Screen = (root, app) => {
           ? { startMin: minutes(form.sleepFrom.value), endMin: minutes(form.sleepTo.value), offsetMin: -new Date().getTimezoneOffset() }
           : null,
       };
+      const picked = new Set(Array.from(form.querySelectorAll<HTMLInputElement>('input[name=invite]:checked'), (i) => i.value));
+      opts.invites = friends.filter((f) => picked.has(f.uid)).map((f) => ({ uid: f.uid, username: f.username }));
+      opts.waitForInvites = !!form.waitForInvites?.checked;
       const id = await createYard(app.profile, opts, picker.get());
-      toast('Yard open. Share the code with your flock.', 'good');
+      toast(opts.invites.length ? 'Yard open. Your flock has been invited.' : 'Yard open. Share the code with your flock.', 'good');
       app.go(`#/yard/${id}`);
     });
   };
@@ -146,14 +170,16 @@ export const joinScreen: Screen = (root, app, [rawCode]) => {
       return;
     }
     if (yard.members[app.profile.uid]) { app.go(`#/yard/${yard.id}`); return; }
-    if (yard.status === 'finished' || yard.endsAt <= Date.now()) {
+    if (yard.status === 'finished' || (yard.status === 'active' && yard.endsAt <= Date.now())) {
       card.innerHTML = `<h1>${esc(yard.name)}</h1><p>This yard has already closed.</p><a class="btn" href="#/">Back</a>`;
       return;
     }
     const names = yard.memberUids.map((u) => esc(yard.members[u].username)).join(', ');
     card.innerHTML = `<h1>Join ${esc(yard.name)}</h1>
       <p><span class="tag-pill">${MODE_NAMES[yard.mode]}</span>${yard.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}</p>
-      <p class="muted">${MODE_BLURBS[yard.mode]} Closes ${dateTime(yard.endsAt)}.<br>In the yard: ${names}.</p>
+      <p class="muted">${MODE_BLURBS[yard.mode]} ${yard.status === 'waiting'
+        ? `Starts once every invited chicken has answered, then runs for ${span(yard.endsAt - yard.createdAt)}.`
+        : `Closes ${dateTime(yard.endsAt)}.`}<br>In the yard: ${names}.</p>
       <div id="picker"></div>
       <button class="btn primary" id="join-go" type="button">Join this yard</button>
       <a class="link" href="#/">Cancel</a>`;

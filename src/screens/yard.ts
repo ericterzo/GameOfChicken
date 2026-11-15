@@ -1,7 +1,7 @@
 // The yard itself. Having this screen open and visible means "my chicken is in
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
-import { leaveYard, startEating, stopEating, touchYard, watchYard, type YardDoc } from '../api';
+import { leaveYard, startEating, startYardNow, stopEating, touchYard, watchYard, type YardDoc } from '../api';
 import {
   countsForRecords, isAsleep, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
@@ -91,7 +91,9 @@ export const yardScreen: Screen = (root, app, [id]) => {
   // ----- drawing -----
 
   function paintHead(y: Yard, now: number): void {
-    const when = y.status === 'finished' ? 'Closed' : `Closes in ${span(y.endsAt - now)}`;
+    const when = y.status === 'finished' ? 'Closed'
+      : y.status === 'waiting' ? `Not started · runs for ${span(y.endsAt - y.createdAt)}`
+      : `Closes in ${span(y.endsAt - now)}`;
     const html = `<a class="back" href="#/" aria-label="Back to home">‹</a>
       <div class="yard-title"><h1>${esc(y.name)}</h1>
         <p><span class="tag-pill">${MODE_NAMES[y.mode]}</span>${y.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}
@@ -129,6 +131,13 @@ export const yardScreen: Screen = (root, app, [id]) => {
     scene.innerHTML = html;
   }
 
+  /** Who has been invited and not answered, shown under the scores. */
+  function pendingLine(y: Yard): string {
+    const names = (y.invitedUids ?? []).map((u) => y.invitedNames?.[u] ?? 'A chicken');
+    if (!names.length || y.status === 'finished') return '';
+    return `<p class="muted small pending">Invited, no answer yet: ${esc(names.join(', '))}</p>`;
+  }
+
   function paintBoard(y: Yard, now: number): void {
     const rows = y.memberUids
       .map((u) => ({ u, m: y.members[u], pts: livePoints(y, u, now) }))
@@ -142,7 +151,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
         <span class="board-name">${esc(m.username)}${won ? ' <span class="tag-pill win">Winner</span>' : ''}
           ${here ? `<small class="muted">${here}</small>` : ''}</span>
         <span class="board-pts">${num(pts)}${u === rows[0].u ? goal : ''}</span></li>`;
-    }).join('')}</ol>`;
+    }).join('')}</ol>${pendingLine(y)}`;
     if (html === lastBoard) return;
     lastBoard = html;
     board.innerHTML = html;
@@ -166,6 +175,19 @@ export const yardScreen: Screen = (root, app, [id]) => {
       set('finished', `<h2>${esc(headline)}</h2><p class="muted">You finished with ${num(mine)} points. ${MODE_BLURBS[y.mode]}</p>
         ${countsForRecords(y) ? '' : '<p class="muted small">Nobody else joined, so this yard does not count towards your record.</p>'}
         <a class="btn" href="#/">Back to your yards</a>`);
+      return;
+    }
+
+    if (y.status === 'waiting') {
+      const names = (y.invitedUids ?? []).map((u) => y.invitedNames?.[u] ?? 'A chicken');
+      const mine = y.ownerUid === uid;
+      set(`waiting:${names.join(',')}:${mine}`, `<h2>Waiting for the flock</h2>
+        <p>${esc(names.join(', '))} still ${names.length === 1 ? 'has' : 'have'} to answer. Nobody can eat until then.</p>
+        ${mine ? '<button class="btn" id="start-now" type="button">Start without them</button>'
+          : '<p class="muted small">The chicken who opened the yard can also start it early.</p>'}`, () => {
+        const b = panel.querySelector<HTMLButtonElement>('#start-now');
+        if (b) b.onclick = () => void busy(b, () => startYardNow(id, uid));
+      });
       return;
     }
 

@@ -1,9 +1,10 @@
 import type { Screen } from '../app';
 import {
-  claimStats, finalizeYard, markRead, watchInbox, watchMyYards, type InboxMessage, type YardDoc,
+  claimStats, declineInvite, finalizeYard, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
+  type InboxMessage, type YardDoc,
 } from '../api';
 import { countsForRecords, MODE_NAMES, settle } from '../game/rules';
-import { busy, esc, num, span } from '../ui/dom';
+import { busy, esc, num, span, toast } from '../ui/dom';
 import { installHelp } from '../ui/installHelp';
 import { yardScene } from '../ui/yardScene';
 
@@ -15,6 +16,7 @@ export const homeScreen: Screen = (root, app) => {
 
   root.innerHTML = `
     <div id="inbox"></div>
+    <div id="invites"></div>
     <section class="card cosy">
       <div id="cosy-scene"></div>
       <p class="cosy-caption"></p>
@@ -43,6 +45,38 @@ export const homeScreen: Screen = (root, app) => {
   const caption = root.querySelector<HTMLElement>('.cosy-caption')!;
   const inbox = root.querySelector<HTMLElement>('#inbox')!;
   const list = root.querySelector<HTMLElement>('#yards')!;
+  const invitesBox = root.querySelector<HTMLElement>('#invites')!;
+  let invites: YardDoc[] = [];
+
+  const paintInvites = () => {
+    if (!invites.length) { invitesBox.innerHTML = ''; return; }
+    invitesBox.innerHTML = `<section class="card invites">
+      <h2>You are invited</h2>
+      ${invites.map((y) => `<div class="invite">
+        <p><strong>${esc(y.members[y.ownerUid]?.username ?? 'A friend')}</strong> invited you to <strong>${esc(y.name)}</strong>
+          <span class="tag-pill">${MODE_NAMES[y.mode]}</span>${y.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}<br>
+          <span class="muted small">${y.status === 'waiting'
+            ? `Starts when everyone has answered, then runs for ${span(y.endsAt - y.createdAt)}.`
+            : `Already running. Closes in ${span(y.endsAt - Date.now())}.`}</span></p>
+        <div class="row"><button class="btn" type="button" data-accept="${y.id}">Accept</button>
+          <button class="btn quiet" type="button" data-decline="${y.id}">Decline</button></div>
+      </div>`).join('')}
+    </section>`;
+  };
+
+  invitesBox.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-accept],button[data-decline]');
+    if (!b) return;
+    const y = invites.find((v) => v.id === (b.dataset.accept ?? b.dataset.decline));
+    if (!y) return;
+    void busy(b, async () => {
+      if (b.dataset.decline) { await declineInvite(y.id, uid); return; }
+      // With a personal chicken set for every yard there is nothing to choose: join right here.
+      if (!app.profile.lookEverywhere) { app.go(`#/join/${y.joinCode}`); return; }
+      await joinYard(app.profile, y.id, app.profile.look);
+      toast(`You joined ${y.name}.`, 'good');
+    });
+  });
 
   const paintCosy = () => {
     const p = app.profile;
@@ -85,7 +119,7 @@ export const homeScreen: Screen = (root, app) => {
     if (!loaded) return;
     const now = Date.now();
     const view = yards.map((y) => ({ id: y.id, y: settle(y, now) }));
-    const open = view.filter((v) => v.y.status === 'active').sort((a, b) => a.y.endsAt - b.y.endsAt);
+    const open = view.filter((v) => v.y.status !== 'finished').sort((a, b) => a.y.endsAt - b.y.endsAt);
     const closed = view.filter((v) => v.y.status === 'finished').sort((a, b) => b.y.endsAt - a.y.endsAt).slice(0, 10);
     if (!view.length) {
       list.innerHTML = '<p class="muted">You are not in any yard yet. Start one, or join a friend’s with their code.</p>';
@@ -95,7 +129,10 @@ export const homeScreen: Screen = (root, app) => {
       const mine = y.members[uid]?.points ?? 0;
       const tags = `<span class="tag-pill">${MODE_NAMES[y.mode]}</span>${y.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}`;
       let line: string;
-      if (y.status === 'active') {
+      if (y.status === 'waiting') {
+        const left = (y.invitedUids ?? []).length;
+        line = `Not started · waiting for ${left} invited ${left === 1 ? 'chicken' : 'chickens'}`;
+      } else if (y.status === 'active') {
         line = `Closes in ${span(y.endsAt - now)} · you have ${num(mine)}`;
       } else if (!countsForRecords(y)) {
         line = `Closed · solo yard, not counted · you had ${num(mine)}`;
@@ -108,7 +145,7 @@ export const homeScreen: Screen = (root, app) => {
       return `<a class="yard-row${y.status === 'finished' ? ' closed' : ''}" href="#/yard/${id}">
         <span class="yard-name">${esc(y.name)} ${tags}</span>
         <span class="muted">${line}</span>
-        <span class="yard-go">${y.status === 'active' ? 'Enter' : 'View'}</span></a>`;
+        <span class="yard-go">${y.status === 'finished' ? 'View' : 'Enter'}</span></a>`;
     };
     list.innerHTML =
       (open.length ? open.map(row).join('') : '<p class="muted">No open yards right now.</p>') +
@@ -125,6 +162,7 @@ export const homeScreen: Screen = (root, app) => {
   const stops = [
     app.onProfile(paintCosy),
     watchInbox(uid, paintInbox),
+    watchMyInvites(uid, (ys) => { invites = ys; paintInvites(); }),
     watchMyYards(uid, (ys) => { yards = ys; loaded = true; housekeeping(); paintYards(); }),
   ];
   const timer = window.setInterval(() => { housekeeping(); paintYards(); }, 15_000);

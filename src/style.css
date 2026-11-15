@@ -171,3 +171,11 @@ input:not([type='checkbox']):not([type='radio']), select {
 .credits dl { margin: 0; display: grid; gap: 8px; }
 .credits dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .credits dd { margin: 0; font-weight: 700; }
+
+.invites .invite { padding: 10px 0; border-top: 1px solid var(--line); }
+.invites .invite:first-of-type { border-top: 0; padding-top: 0; }
+.invites .row .btn { flex: 1; }
+.btn.quiet { border-color: #c9b48f; font-weight: 600; }
+.invitee { align-items: center; margin: 8px 0; }
+.invitee .board-chicken { width: 40px; }
+.pending { margin: 10px 0 0; }

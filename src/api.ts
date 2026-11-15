@@ -257,6 +257,35 @@ export function watchMyYards(uid: string, cb: (yards: YardDoc[]) => void): () =>
   });
 }
 
+/** Open invitations for me: yards I was invited to and have not answered. */
+export function watchMyInvites(uid: string, cb: (yards: YardDoc[]) => void): () => void {
+  const q = query(collection(db, 'yards'), where('invitedUids', 'array-contains', uid));
+  return onSnapshot(q, (snap) => {
+    const now = Date.now();
+    cb(snap.docs
+      .map((d) => ({ id: d.id, ...(d.data() as Yard) }))
+      .filter((y) => y.status === 'waiting' || (y.status === 'active' && y.endsAt > now)));
+  });
+}
+
+/** Apply a rule that changes the yard without anyone walking in. */
+async function change(yardId: string, fn: (y: Yard, now: number) => Yard): Promise<void> {
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(yardRef(yardId));
+      if (!snap.exists()) throw new ApiError('That yard no longer exists.');
+      tx.set(yardRef(yardId), fn(snap.data() as Yard, Date.now()));
+    });
+  } catch (e) {
+    throw friendly(e);
+  }
+}
+
+export const declineInvite = (id: string, uid: string) => change(id, (y, now) => rules.declineInvite(y, uid, now));
+
+/** The owner stops waiting for invited chickens and starts the game. */
+export const startYardNow = (id: string, uid: string) => change(id, (y, now) => rules.startNow(y, uid, now));
+
 /** Load the yard, apply one rule to it, save it, and tell any victim. */
 async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Result): Promise<Result> {
   try {

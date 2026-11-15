@@ -54,11 +54,17 @@ export interface Yard {
   goal: number | null;
   hardcore: boolean;
   sleep: Sleep | null;
-  status: 'active' | 'finished';
+  /** 'waiting': invited chickens have not all answered yet, nobody can eat. */
+  status: 'waiting' | 'active' | 'finished';
   winnerUids: string[];
   eating: Eating | null;
   members: Record<string, Member>;
   memberUids: string[];
+  /** Invited players who have not answered yet. Absent on yards made before invites existed. */
+  invitedUids?: string[];
+  /** Username of everyone ever invited, for display. */
+  invitedNames?: Record<string, string>;
+  declinedUids?: string[];
 }
 
 export interface InterruptEvent {
@@ -165,7 +171,7 @@ export function mealPoints(yard: Yard, now: number): number {
 }
 
 function finishIfOver(yard: Yard, now: number): void {
-  if (yard.status === 'finished') return;
+  if (yard.status !== 'active') return;
   let over = now >= yard.endsAt;
   if (yard.goal != null) {
     if (yard.mode === 'fatHen' && leaderPoints(yard) >= yard.goal) over = true;
@@ -186,7 +192,7 @@ function finishIfOver(yard: Yard, now: number): void {
 
 /** Bank a meal that has run its course, and close the yard if it is over. */
 function settleInPlace(yard: Yard, now: number): void {
-  if (yard.status === 'finished') return;
+  if (yard.status !== 'active') return;
   if (yard.eating && mealEnd(yard, now) <= now) {
     yard.members[yard.eating.uid].points += mealPoints(yard, now);
     yard.eating = null;
@@ -242,6 +248,7 @@ export function othersPresent(yard: Yard, uid: string, now: number): string[] {
 /** Why `uid` cannot start eating right now, or null if they can. */
 export function whyCannotEat(yard: Yard, uid: string, now: number): string | null {
   if (yard.status === 'finished') return 'This yard is closed.';
+  if (yard.status === 'waiting') return 'Waiting for the invited chickens to answer.';
   if (isAsleep(yard.sleep, now)) return 'The chickens are asleep.';
   if (yard.eating) {
     return yard.eating.uid === uid ? 'You are already eating.' : 'Another chicken is eating.';
@@ -310,6 +317,40 @@ export function join(yard: Yard, uid: string, username: string, look: Look, now:
     username, look, points: 0, lastSeen: 0, mealsLost: 0, mealsStolen: 0, statsClaimed: false,
   };
   y.memberUids.push(uid);
+  if (y.invitedUids?.includes(uid)) y.invitedUids = y.invitedUids.filter((u) => u !== uid);
+  startIfEveryoneAnswered(y, now);
+  return y;
+}
+
+// ---------- invitations ----------
+
+/** The game begins: the yard keeps its full length, counted from now. */
+function start(yard: Yard, now: number): void {
+  const length = yard.endsAt - yard.createdAt;
+  yard.createdAt = now;
+  yard.endsAt = now + length;
+  yard.status = 'active';
+}
+
+function startIfEveryoneAnswered(yard: Yard, now: number): void {
+  if (yard.status === 'waiting' && !(yard.invitedUids ?? []).length) start(yard, now);
+}
+
+/** An invited player says no. Accepting is simply `join`. */
+export function declineInvite(yard: Yard, uid: string, now: number): Yard {
+  const y = clone(yard);
+  if (!y.invitedUids?.includes(uid)) throw new RuleError('That invitation is no longer open.');
+  y.invitedUids = y.invitedUids.filter((u) => u !== uid);
+  y.declinedUids = [...(y.declinedUids ?? []), uid];
+  startIfEveryoneAnswered(y, now);
+  return y;
+}
+
+/** The yard's owner stops waiting for answers. */
+export function startNow(yard: Yard, uid: string, now: number): Yard {
+  const y = clone(yard);
+  if (y.ownerUid !== uid) throw new RuleError('Only the chicken who opened the yard can start it early.');
+  if (y.status === 'waiting') start(y, now);
   return y;
 }
 
@@ -320,6 +361,10 @@ export interface NewYard {
   endsAt: number;
   hardcore: boolean;
   sleep: Sleep | null;
+  /** Friends to invite straight away. */
+  invites?: { uid: string; username: string }[];
+  /** Hold the game until every invited chicken has joined or declined. */
+  waitForInvites?: boolean;
 }
 
 export function createYard(
@@ -335,15 +380,20 @@ export function createYard(
     if (!(goal >= 10)) throw new RuleError('The goal must be at least 10.');
   }
   const hardcore = !!opts.hardcore;
+  const invites = (opts.invites ?? []).filter((i) => i.uid !== uid).slice(0, MAX_MEMBERS - 1);
   return {
     name, joinCode, ownerUid: uid, createdAt: now, endsAt: opts.endsAt,
     mode: opts.mode, goal, hardcore,
     sleep: hardcore ? null : opts.sleep,
-    status: 'active', winnerUids: [], eating: null,
+    status: opts.waitForInvites && invites.length ? 'waiting' : 'active',
+    winnerUids: [], eating: null,
     members: {
       [uid]: { username, look, points: 0, lastSeen: 0, mealsLost: 0, mealsStolen: 0, statsClaimed: false },
     },
     memberUids: [uid],
+    invitedUids: invites.map((i) => i.uid),
+    invitedNames: Object.fromEntries(invites.map((i) => [i.uid, i.username])),
+    declinedUids: [],
   };
 }
 
@@ -382,6 +432,7 @@ export function pileFraction(yard: Yard, now: number): number {
     return clamp(1 - Math.max(0, ...uids.map(live)) / yard.goal);
   }
   if (yard.status === 'finished') return 0;
+  if (yard.status === 'waiting') return 1;
   return clamp((yard.endsAt - now) / (yard.endsAt - yard.createdAt));
 }
 

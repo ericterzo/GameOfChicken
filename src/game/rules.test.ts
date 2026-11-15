@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  countsForRecords, createYard, isAsleep, join, leave, livePoints, maxMealSeconds, nextSleepStart, pileFraction,
-  RuleError, settle, sizeFor, startEating, stopEating, touch, whyCannotEat,
+  countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, maxMealSeconds, nextSleepStart, pileFraction,
+  RuleError, settle, sizeFor, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -264,6 +264,50 @@ describe('sleep hours', () => {
     const r = touch(y, 'b', s(12 * HOUR));
     expect(r.interrupted).toBeNull();
     expect(r.yard.members.a.points).toBe(HOUR);
+  });
+});
+
+describe('invitations', () => {
+  const invites = [{ uid: 'b', username: 'Ben' }, { uid: 'c', username: 'Cy' }];
+  const waiting = () => createYard(
+    { name: 'Y', mode: 'sundown', goal: null, endsAt: s(HOUR), hardcore: false, sleep: null, invites, waitForInvites: true },
+    'a', 'Anna', look, 'X', T0,
+  );
+
+  it('opens at once when not asked to wait, and lists who is invited', () => {
+    const y = createYard(
+      { name: 'Y', mode: 'sundown', goal: null, endsAt: s(HOUR), hardcore: false, sleep: null, invites }, 'a', 'Anna', look, 'X', T0,
+    );
+    expect(y.status).toBe('active');
+    expect(y.invitedUids).toEqual(['b', 'c']);
+    expect(y.invitedNames).toEqual({ b: 'Ben', c: 'Cy' });
+  });
+
+  it('holds the game until everyone has joined or declined', () => {
+    let y = waiting();
+    expect(y.status).toBe('waiting');
+    expect(() => startEating(y, 'a', s(10), 30)).toThrow(/Waiting/);
+    expect(settle(y, s(2 * HOUR)).status).toBe('waiting'); // does not expire while waiting
+    y = join(y, 'b', 'Ben', look, s(100));
+    expect(y.status).toBe('waiting');
+    expect(y.invitedUids).toEqual(['c']);
+    y = declineInvite(y, 'c', s(500));
+    expect(y.status).toBe('active');
+    expect(y.declinedUids).toEqual(['c']);
+    // The full hour is played from the moment the game starts.
+    expect(y.createdAt).toBe(s(500));
+    expect(y.endsAt).toBe(s(500 + HOUR));
+    expect(startEating(y, 'a', s(510), 30).yard.eating!.uid).toBe('a');
+  });
+
+  it('lets only the owner start early, and refuses a second answer', () => {
+    const y = waiting();
+    expect(() => startNow(y, 'b', s(5))).toThrow(RuleError);
+    const started = startNow(y, 'a', s(5));
+    expect(started.status).toBe('active');
+    expect(started.endsAt).toBe(s(5 + HOUR));
+    const declined = declineInvite(started, 'b', s(6));
+    expect(() => declineInvite(declined, 'b', s(7))).toThrow(/no longer open/);
   });
 });
 
