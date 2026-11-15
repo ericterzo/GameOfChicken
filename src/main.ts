@@ -3,6 +3,7 @@ import type { App, Screen } from './app';
 import { isSigningUp, onUser, signOut, watchProfile, type Profile } from './api';
 import { configMissing } from './firebase';
 import { authScreen, usernameScreen } from './screens/auth';
+import { helpScreen } from './screens/help';
 import { homeScreen } from './screens/home';
 import { chickenScreen, flockScreen, leaderboardScreen } from './screens/profile';
 import { joinScreen, newYardScreen } from './screens/setup';
@@ -24,7 +25,7 @@ const app: App = {
 };
 
 const ROUTES: Record<string, Screen> = {
-  '': homeScreen, new: newYardScreen, join: joinScreen, yard: yardScreen, chicken: chickenScreen, flock: flockScreen, leaderboard: leaderboardScreen,
+  '': homeScreen, new: newYardScreen, join: joinScreen, yard: yardScreen, chicken: chickenScreen, flock: flockScreen, leaderboard: leaderboardScreen, help: helpScreen,
 };
 
 function route(): void {
@@ -44,15 +45,18 @@ function route(): void {
     root.innerHTML = '<p class="loading">Opening the coop…</p>';
     return;
   }
+  const [name = '', ...params] = location.hash.replace(/^#\/?/, '').split('/');
+  // The rules can be read before signing in.
+  if (!uid && name === 'help') { helpScreen(root); return; }
   if (!uid) { authScreen(root); return; }
 
-  const [name = '', ...params] = location.hash.replace(/^#\/?/, '').split('/');
   const screen = ROUTES[name] ?? homeScreen;
   const tab = (key: string, label: string) =>
     `<a href="#/${key}" class="${name === key ? 'on' : ''}">${label}</a>`;
   root.innerHTML = `
     <header class="top">
       <a class="brand" href="#/"><img src="/icons/icon.svg" alt="" width="32" height="32">The Game of Chicken</a>
+      <a class="help-link${name === 'help' ? ' on' : ''}" href="#/help">How to play</a>
       <nav>${tab('', 'Yards')}${tab('chicken', 'My chicken')}${tab('flock', 'Flock')}${tab('leaderboard', 'Leaderboard')}</nav>
     </header>
     <main></main>

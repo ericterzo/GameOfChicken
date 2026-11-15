@@ -215,3 +215,19 @@ input:not([type='checkbox']):not([type='radio']), select {
 .flock-table .rank { width: 1%; text-align: right; color: var(--muted); font-size: 0.85rem; padding-right: 4px; }
 .flock-table thead .rank { font-weight: 700; padding: 0 4px 0 8px; }
 .flock-table tbody th[scope=row], .flock-table thead button[data-sort=username] { text-align: left; }
+
+.help-link { padding: 7px 12px; border-radius: 999px; border: 1.5px solid #c9b48f; text-decoration: none; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+.help-link.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.top nav { flex-basis: 100%; }
+.auth-help { margin: 10px 0 0; }
+.help h2 { margin-top: 22px; }
+.help ul { margin: 0 0 10px; padding-left: 20px; line-height: 1.5; }
+.help li { margin-bottom: 6px; }
+.help .lead { font-size: 1.05rem; }
+.help-hero { display: flex; justify-content: center; }
+.help .callout { background: #f8ebd0; border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+.modes-help { margin: 0 0 10px; display: grid; gap: 8px; }
+.modes-help > div { border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; }
+.modes-help dt { font-weight: 800; }
+.modes-help dd { margin: 2px 0 0; line-height: 1.45; }
+.help .btn { margin-top: 12px; }
