@@ -8,7 +8,7 @@ import {
 } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
 import { busy, clock, dateTime, esc, num, span, toast } from '../ui/dom';
-import { yardScene, type SceneChicken } from '../ui/yardScene';
+import { sceneClock, yardScene, type SceneChicken } from '../ui/yardScene';
 
 const TIMERS: [string, number][] = [
   ['5s', 5], ['30s', 30], ['1m', 60], ['5m', 300], ['15m', 900], ['1h', 3600], ['4h', 14400], ['8h', 28800],
@@ -113,7 +113,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   }
 
   function paintScene(y: Yard, now: number): void {
-    const night = y.status === 'active' && isAsleep(y.sleep, now);
+    const asleep = y.status === 'active' && isAsleep(y.sleep, now);
     const inYard = (u: string) =>
       y.status === 'finished' || u === uid || y.eating?.uid === u || now - y.members[u].lastSeen < PRESENCE_MS;
     const chickens: SceneChicken[] = y.memberUids.filter(inYard).map((u) => ({
@@ -123,11 +123,14 @@ export const yardScreen: Screen = (root, app, [id]) => {
       eating: y.eating?.uid === u,
       me: u === uid,
     }));
-    const html = yardScene({ pile: Math.round(pileFraction(y, now) * 100) / 100, chickens, night });
+    // The sky follows the viewer's clock; a new picture each minute is plenty.
+    const time = Math.floor(now / 60000) * 60000;
+    const html = yardScene({ pile: Math.round(pileFraction(y, now) * 100) / 100, chickens, asleep, time });
     if (html === lastScene) return;
     lastScene = html;
     // Keep the pecking in step with the clock so redraws do not restart it.
     scene.style.setProperty('--peck-delay', `-${now % 900}ms`);
+    scene.style.setProperty('--scene-t', sceneClock(now));
     scene.innerHTML = html;
   }
 

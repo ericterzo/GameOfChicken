@@ -181,3 +181,32 @@ input:not([type='checkbox']):not([type='radio']), select {
 .pending { margin: 10px 0 0; }
 
 .invite-hint { color: var(--accent); font-weight: 700; }
+
+/* Sky: clouds drift across, and Zs float up from a sleeping coop. */
+.scene .cloud { animation: ys-drift linear infinite; }
+@keyframes ys-drift { from { transform: translateX(var(--from)); } to { transform: translateX(var(--to)); } }
+.scene .zzz text { animation: ys-zzz 3.6s ease-in-out infinite; }
+.scene .zzz text:nth-child(2) { animation-delay: 0.9s; }
+.scene .zzz text:nth-child(3) { animation-delay: 1.8s; }
+@keyframes ys-zzz {
+  0% { opacity: 0; transform: translate(-4px, 8px); }
+  30%, 60% { opacity: 1; }
+  100% { opacity: 0; transform: translate(5px, -12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene .cloud, .scene .zzz text { animation: none; }
+}
+
+.table-wrap { overflow-x: auto; margin: 0 -8px; padding: 0 8px; }
+.flock-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.flock-table th, .flock-table td { padding: 6px 8px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.flock-table thead th { border-top: 0; padding: 0; }
+.flock-table thead button { width: 100%; min-height: 40px; padding: 0 8px; border: 0; background: none; font: inherit; font-size: 0.8rem; font-weight: 700;
+  color: var(--muted); text-align: right; cursor: pointer; white-space: nowrap; }
+.flock-table thead th[aria-sort] button { color: var(--ink); }
+.flock-table th:first-child, .flock-table thead th:first-child button { text-align: left; }
+.flock-table tbody th { position: sticky; left: 0; background: var(--card); font-weight: 600; }
+.flock-table tbody th > span { display: inline-block; vertical-align: middle; }
+.flock-table tbody th small { font-weight: 400; color: var(--muted); }
+.flock-table .cell-chicken { width: 38px; }
+.flock-table tr.me th, .flock-table tr.me td { background: #f8ebd0; font-weight: 800; }

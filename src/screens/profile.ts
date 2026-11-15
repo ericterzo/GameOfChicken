@@ -45,6 +45,11 @@ export const flockScreen: Screen = (root, app) => {
     <section class="card"><h1>Your record</h1><div id="mine"></div>
       <p class="muted small">Counts closed yards that at least one other chicken joined. “Biggest chicken” is your best score in a single yard.</p></section>
     <section class="card">
+      <h2>Flock table</h2>
+      <p class="muted small">You and your friends side by side. Tap a column to sort by it; tap again to reverse.</p>
+      <div id="table" class="table-wrap"></div>
+    </section>
+    <section class="card">
       <h2>Your flock</h2>
       <form id="add" class="join">
         <input name="username" placeholder="Friend’s username" maxlength="16" autocapitalize="none" autocomplete="off" spellcheck="false" aria-label="Friend’s username">
@@ -55,7 +60,46 @@ export const flockScreen: Screen = (root, app) => {
   const mine = root.querySelector<HTMLElement>('#mine')!;
   const friends = root.querySelector<HTMLElement>('#friends')!;
 
+  const table = root.querySelector<HTMLElement>('#table')!;
+  type Col = keyof Stats | 'username';
+  const COLS: [Col, string][] = [
+    ['username', 'Chicken'], ['wins', 'Won'], ['gamesPlayed', 'Played'], ['biggestChicken', 'Biggest'],
+    ['totalPoints', 'Eaten'], ['mealsStolen', 'Stolen'], ['mealsLost', 'Lost'],
+  ];
+  let sortKey: Col = 'wins';
+  let sortDesc = true;
+  let friendProfiles: Profile[] = [];
+
+  const paintTable = () => {
+    const me = app.profile;
+    const value = (p: Profile) => (sortKey === 'username' ? p.username.toLowerCase() : p.stats[sortKey]);
+    const rows = [me, ...friendProfiles].sort((a, b) => {
+      const x = value(a);
+      const y = value(b);
+      if (x === y) return a.username.localeCompare(b.username);
+      return (x < y ? -1 : 1) * (sortDesc ? -1 : 1);
+    });
+    table.innerHTML = `<table class="flock-table">
+      <thead><tr>${COLS.map(([k, label]) => `<th scope="col" ${k === sortKey ? `aria-sort="${sortDesc ? 'descending' : 'ascending'}"` : ''}>
+        <button type="button" data-sort="${k}">${label}<span aria-hidden="true">${k === sortKey ? (sortDesc ? ' ▼' : ' ▲') : ''}</span></button></th>`).join('')}</tr></thead>
+      <tbody>${rows.map((p) => `<tr class="${p.uid === me.uid ? 'me' : ''}">
+        <th scope="row"><span class="cell-chicken">${chickenSvg(p.look, { px: 34 })}</span><span>${esc(p.username)}${p.uid === me.uid ? ' <small>(you)</small>' : ''}</span></th>
+        ${COLS.slice(1).map(([k]) => `<td>${num(p.stats[k as keyof Stats])}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+  };
+
+  table.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-sort]');
+    if (!b) return;
+    const key = b.dataset.sort as Col;
+    if (key === sortKey) sortDesc = !sortDesc;
+    else { sortKey = key; sortDesc = key !== 'username'; } // numbers start biggest first, names A to Z
+    paintTable();
+  });
+
   const paintFriends = (list: Profile[]) => {
+    friendProfiles = list;
+    paintTable();
     if (!list.length) {
       friends.innerHTML = '<p class="muted">Nobody yet. Add a friend by their username to see how they are doing.</p>';
       return;
@@ -73,6 +117,7 @@ export const flockScreen: Screen = (root, app) => {
   const refresh = () => {
     const p = app.profile;
     mine.innerHTML = statGrid(p.stats);
+    paintTable();
     const key = p.friends.join(',');
     if (key === loadedFor) return;
     loadedFor = key;

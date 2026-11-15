@@ -6,7 +6,7 @@ import {
 import { countsForRecords, MODE_NAMES, settle } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { installHelp } from '../ui/installHelp';
-import { yardScene } from '../ui/yardScene';
+import { sceneClock, yardScene } from '../ui/yardScene';
 
 export const homeScreen: Screen = (root, app) => {
   const uid = app.profile.uid;
@@ -78,13 +78,20 @@ export const homeScreen: Screen = (root, app) => {
     });
   });
 
+  let lastCosy = '';
   const paintCosy = () => {
     const p = app.profile;
-    cosy.style.setProperty('--peck-delay', `-${Date.now() % 900}ms`);
-    cosy.innerHTML = yardScene({
-      pile: 0.55, cosy: true,
+    const now = Date.now();
+    const html = yardScene({
+      pile: 0.55, cosy: true, time: Math.floor(now / 60000) * 60000,
       chickens: [{ look: p.look, name: p.username, size: 0.6, eating: true, me: true }],
     });
+    if (html !== lastCosy) {
+      lastCosy = html;
+      cosy.style.setProperty('--peck-delay', `-${now % 900}ms`);
+      cosy.style.setProperty('--scene-t', sceneClock(now));
+      cosy.innerHTML = html;
+    }
     caption.textContent = `${p.username} is safe here. The real yards are below.`;
   };
 
@@ -165,6 +172,6 @@ export const homeScreen: Screen = (root, app) => {
     watchMyInvites(uid, (ys) => { invites = ys; paintInvites(); }),
     watchMyYards(uid, (ys) => { yards = ys; loaded = true; housekeeping(); paintYards(); }),
   ];
-  const timer = window.setInterval(() => { housekeeping(); paintYards(); }, 15_000);
+  const timer = window.setInterval(() => { housekeeping(); paintYards(); paintCosy(); }, 15_000);
   return () => { stops.forEach((s) => s()); clearInterval(timer); };
 };

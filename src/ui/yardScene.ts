@@ -20,7 +20,10 @@ export interface SceneOptions {
   /** Feed pile, 1 = full, 0 = gone. */
   pile: number;
   chickens: SceneChicken[];
-  night?: boolean;
+  /** The viewer's clock (ms). Decides day, night, and where the sun or moon is. Defaults to now. */
+  time?: number;
+  /** The yard's sleep hours are on right now: coop shut, chickens inside, Zs rising. */
+  asleep?: boolean;
   /** The small friendly yard on the home screen. */
   cosy?: boolean;
 }
@@ -80,6 +83,9 @@ function moundPath(): string {
 
 // ---------- backdrop ----------
 
+const TREES: [number, number, number][] = [[118, 80, 0.9], [134, 86, 0.7], [252, 74, 1], [356, 80, 0.8], [30, 92, 0.75]];
+const FAR_HILL = 'M0 112 Q70 60 150 100 Q232 58 312 96 Q360 76 400 92';
+
 function tree(x: number, y: number, s: number): string {
   return `<g transform="translate(${x} ${y}) scale(${s})">
     <rect x="-1.5" y="0" width="3" height="9" fill="#7a5533"/>
@@ -87,28 +93,91 @@ function tree(x: number, y: number, s: number): string {
     <circle cx="-3" cy="-7" r="4" fill="#79bd68"/></g>`;
 }
 
-function cloud(x: number, y: number, s: number): string {
-  return `<g transform="translate(${x} ${y}) scale(${s})" fill="#fff" fill-opacity="0.92">
-    <ellipse cx="0" cy="0" rx="22" ry="8"/><ellipse cx="-9" cy="-6" rx="11" ry="8"/><ellipse cx="7" cy="-8" rx="13" ry="10"/></g>`;
+function treeOutline(x: number, y: number, s: number): string {
+  return `<circle cx="${x}" cy="${f1(y - 4 * s)}" r="${f1(9.5 * s)}"/><circle cx="${f1(x - 5 * s)}" cy="${y}" r="${f1(6.5 * s)}"/><circle cx="${f1(x + 5 * s)}" cy="${y}" r="${f1(6.5 * s)}"/>`;
 }
 
-function sky(night: boolean): string {
-  if (night) {
-    const r = rng(7);
-    let stars = '';
-    for (let i = 0; i < 34; i++) {
-      stars += `<circle cx="${f1(r() * 400)}" cy="${f1(r() * 96)}" r="${f1(0.5 + r() * 1.1)}" fill="#fff" fill-opacity="${f1(0.5 + r() * 0.5)}"/>`;
-    }
-    return `<rect width="400" height="150" fill="url(#ys-night)"/>${stars}`;
+// "ys-land" is everything below the skyline: the part of the picture that goes dark at night.
+const SKY_DEFS = `<defs>
+  <linearGradient id="ys-dusk" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#6a4a9c" stop-opacity="0.5"/><stop offset="0.55" stop-color="#ff8f5a" stop-opacity="0.8"/><stop offset="1" stop-color="#ffd27a"/>
+  </linearGradient>
+  <mask id="ys-crescent"><circle r="15" fill="#fff"/><circle cx="-7" cy="-5" r="13" fill="#000"/></mask>
+  <clipPath id="ys-land"><path d="${FAR_HILL} V300 H0 z"/>${TREES.map((t) => treeOutline(...t)).join('')}</clipPath>
+</defs>`;
+
+/**
+ * How light it is: 0 at night, 1 in daytime. Sunrise always fades in between
+ * 7 and 8 in the morning, sunset fades out between 7 and 8 in the evening.
+ */
+export function daylight(hour: number): number {
+  const lin = hour < 7 ? 0 : hour < 8 ? hour - 7 : hour < 19 ? 1 : hour < 20 ? 20 - hour : 0;
+  return lin * lin * (3 - 2 * lin);
+}
+
+/** Keeps the drifting clouds in step with the clock across redraws. Set as --scene-t on the scene's container. */
+export function sceneClock(now: number): string {
+  return `${((now / 1000) % 840).toFixed(2)}s`;
+}
+
+function hourOf(time: number): number {
+  const d = new Date(time);
+  return d.getHours() + d.getMinutes() / 60;
+}
+
+function mix(a: string, b: string, t: number): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const k = Math.max(0, Math.min(1, t));
+  return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * k).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** A point on the arc the sun and moon follow: 0 rising on the left, 1 setting on the right. */
+function arc(p: number): [number, number] {
+  return [20 + 360 * p, 118 - Math.sin(Math.PI * p) * 96];
+}
+
+const CLOUD_SECONDS = [140, 210, 280, 420];
+
+function cloud(i: number, x: number, y: number, s: number, light: number): string {
+  // Each cloud drifts from off the left edge to off the right, at its own pace.
+  const style = `--from:${-(x + 60)}px;--to:${460 - x}px;animation-duration:${CLOUD_SECONDS[i % 4]}s;animation-delay:calc(var(--scene-t, 0s) * -1 - ${i * 53}s)`;
+  return `<g class="cloud" style="${style}"><g transform="translate(${x} ${y}) scale(${s})" fill="${mix('#55638f', '#ffffff', light)}" fill-opacity="${(0.6 + 0.32 * light).toFixed(2)}">
+    <ellipse cx="0" cy="0" rx="22" ry="8"/><ellipse cx="-9" cy="-6" rx="11" ry="8"/><ellipse cx="7" cy="-8" rx="13" ry="10"/></g></g>`;
+}
+
+function sky(hour: number, light: number): string {
+  const r = rng(7);
+  let stars = '';
+  for (let i = 0; i < 34; i++) {
+    stars += `<circle cx="${f1(r() * 400)}" cy="${f1(r() * 96)}" r="${f1(0.5 + r() * 1.1)}" fill="#fff" fill-opacity="${f1(0.5 + r() * 0.5)}"/>`;
   }
-  return `<rect width="400" height="150" fill="url(#ys-sky)"/>
-    <circle cx="334" cy="40" r="40" fill="url(#ys-glow)"/><circle cx="334" cy="40" r="17" fill="#ffe27a"/><circle cx="334" cy="40" r="13" fill="#fff0a6"/>
-    ${cloud(72, 40, 1)}${cloud(214, 26, 0.75)}${cloud(268, 64, 0.55)}`;
+  const glow = 4 * light * (1 - light); // strongest halfway through sunrise or sunset
+  let sun = '';
+  if (hour >= 7 && hour <= 20) {
+    const p = (hour - 7) / 13;
+    const [x, y] = arc(p);
+    const low = Math.pow(1 - Math.sin(Math.PI * p), 3); // 1 on the horizon, 0 overhead
+    sun = `<g transform="translate(${f1(x)} ${f1(y)})"><circle r="${f1(40 + 14 * low)}" fill="url(#ys-glow)"/>
+      <circle r="17" fill="${mix('#ffe27a', '#ff9440', low)}"/><circle r="13" fill="${mix('#fff0a6', '#ffbf63', low)}"/></g>`;
+  }
+  let moon = '';
+  const mp = ((hour - 19.5 + 24) % 24) / 12; // rises 19:30, sets 07:30
+  if (mp <= 1 && light < 0.99) {
+    const [x, y] = arc(mp);
+    moon = `<g transform="translate(${f1(x)} ${f1(y)})" opacity="${(1 - light).toFixed(2)}">
+      <circle r="42" fill="url(#ys-glow)" opacity="0.5"/><circle r="15" fill="#f6f2d8" mask="url(#ys-crescent)"/></g>`;
+  }
+  return `<rect width="400" height="150" fill="url(#ys-night)"/>
+    <g opacity="${(1 - light).toFixed(2)}">${stars}</g>
+    <rect width="400" height="150" fill="url(#ys-sky)" opacity="${light.toFixed(3)}"/>
+    <rect width="400" height="150" fill="url(#ys-dusk)" opacity="${glow.toFixed(3)}"/>
+    ${sun}${moon}
+    ${cloud(0, 72, 40, 1, light)}${cloud(1, 214, 26, 0.75, light)}${cloud(2, 268, 64, 0.55, light)}${cloud(3, 150, 52, 0.65, light)}`;
 }
 
 function hills(): string {
-  return `<path d="M0 112 Q70 60 150 100 Q232 58 312 96 Q360 76 400 92 V134 H0 z" fill="url(#ys-hill-far)"/>
-    ${tree(118, 80, 0.9)}${tree(134, 86, 0.7)}${tree(252, 74, 1)}${tree(356, 80, 0.8)}${tree(30, 92, 0.75)}
+  return `<path d="${FAR_HILL} V134 H0 z" fill="url(#ys-hill-far)"/>
+    ${TREES.map((t) => tree(...t)).join('')}
     <path d="M0 124 Q92 88 192 118 Q292 94 400 116 V140 H0 z" fill="url(#ys-hill-near)"/>`;
 }
 
@@ -177,7 +246,7 @@ function ground(): string {
     ${bits}`;
 }
 
-function coop(night: boolean): string {
+function coop(dark: boolean, asleep: boolean): string {
   let planks = '';
   for (let y = 109; y < 162; y += 10) planks += `<path d="M21 ${y} H103" stroke="#9c3a26" stroke-width="1" opacity="0.55"/>`;
   let shingles = '';
@@ -186,7 +255,13 @@ function coop(night: boolean): string {
     const half = i * 12.3;
     shingles += `<path d="M${f1(62 - half)} ${f1(y)} H${f1(62 + half)}" stroke="#4d2c18" stroke-width="1" opacity="0.6"/>`;
   }
-  const glass = night ? '#ffd76a' : '#cfeaf7';
+  const glass = asleep ? '#3a416c' : dark ? '#ffd76a' : '#cfeaf7';
+  // Asleep: the door is shut. Otherwise it stands open on the dark inside.
+  const door = asleep
+    ? `<path d="M51 164 V137 a9 9 0 0 1 18 0 V164 z" fill="url(#ys-wood)"/>
+       <path d="M55.5 131 V164 M60 128 V164 M64.5 131 V164" stroke="${INK}" stroke-width="0.9" opacity="0.5"/>
+       <path d="M51 142 H69 M51 157 H69" stroke="#8a5a2e" stroke-width="2"/><circle cx="65.5" cy="150" r="1.5" fill="${INK}"/>`
+    : `<path d="M51 164 V137 a9 9 0 0 1 18 0 V164 z" fill="${dark ? '#1c1220' : '#3a2218'}"/>`;
   return `<g transform="${COOP_T}">
     <ellipse cx="64" cy="170" rx="60" ry="7" fill="#000" fill-opacity="0.16"/>
     <rect x="26" y="160" width="6" height="10" fill="#7a5533" stroke="${INK}" stroke-width="1.2"/><rect x="92" y="160" width="6" height="10" fill="#7a5533" stroke="${INK}" stroke-width="1.2"/>
@@ -197,7 +272,7 @@ function coop(night: boolean): string {
     <path d="M14 100 L62 63 L110 100 z" fill="url(#ys-roof)" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
     ${shingles}
     <path d="M47 164 V136 a13 13 0 0 1 26 0 V164 z" fill="#f6ecd9" stroke="${INK}" stroke-width="1.6"/>
-    <path d="M51 164 V137 a9 9 0 0 1 18 0 V164 z" fill="${night ? '#1c1220' : '#3a2218'}"/>
+    ${door}
     <path d="M50 164 H72 L94 192 H66 z" fill="url(#ys-wood)" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>
     <path d="M56 170 H78 M61 177 H83 M66 184 H88" stroke="${INK}" stroke-width="1.4" opacity="0.7"/>
     <circle cx="88" cy="119" r="8.5" fill="#f6ecd9" stroke="${INK}" stroke-width="1.6"/>
@@ -295,21 +370,30 @@ function chicken(c: SceneChicken, spot: [number, number]): string {
   </g>`;
 }
 
-function nightLights(): string {
-  return `<rect width="400" height="300" fill="#0b1238" fill-opacity="0.5"/>
-    <circle cx="332" cy="38" r="42" fill="url(#ys-glow)" opacity="0.55"/>
-    <circle cx="332" cy="38" r="15" fill="#f6f2d8"/><circle cx="325" cy="33" r="13" fill="#131b40"/>
-    <g transform="${COOP_T}">
+/** Drawn last: dusk and darkness over the land, the lit window, and the sleeping coop's Zs. */
+function lights(light: number, asleep: boolean): string {
+  const dark = 1 - light;
+  const glow = 4 * light * (1 - light);
+  let out = '';
+  if (glow > 0.01) out += `<rect width="400" height="300" fill="#ff8a3c" fill-opacity="${(0.16 * glow).toFixed(3)}" clip-path="url(#ys-land)"/>`;
+  if (dark > 0.01) out += `<rect width="400" height="300" fill="#0b1238" fill-opacity="${(0.46 * dark).toFixed(3)}" clip-path="url(#ys-land)"/>`;
+  if (dark > 0.01 && !asleep) {
+    out += `<g transform="${COOP_T}" opacity="${dark.toFixed(2)}">
       <circle cx="88" cy="119" r="26" fill="url(#ys-glow)" opacity="0.8"/><circle cx="88" cy="119" r="6" fill="#ffe08a"/>
-      <path d="M88 113 V125 M82 119 H94" stroke="${INK}" stroke-width="1.2"/>
-      <text x="100" y="66" font-size="13" font-weight="700" fill="#e8ecff">z</text>
-      <text x="110" y="52" font-size="18" font-weight="700" fill="#e8ecff">Z</text>
-      <text x="124" y="34" font-size="24" font-weight="700" fill="#e8ecff">Z</text>
-    </g>`;
+      <path d="M88 113 V125 M82 119 H94" stroke="${INK}" stroke-width="1.2"/></g>`;
+  }
+  if (asleep) {
+    const ink = light > 0.5 ? '#44539a' : '#e8ecff';
+    out += `<g class="zzz" transform="${COOP_T}" fill="${ink}" stroke="${light > 0.5 ? '#ffffff' : 'none'}" stroke-width="0.6" paint-order="stroke" font-weight="800">
+      <text x="98" y="68" font-size="13">z</text><text x="109" y="53" font-size="18">Z</text><text x="124" y="35" font-size="24">Z</text></g>`;
+  }
+  return out;
 }
 
 export function yardScene(o: SceneOptions): string {
-  const night = !!o.night;
+  const asleep = !!o.asleep;
+  const hour = hourOf(o.time ?? Date.now());
+  const light = daylight(hour);
   const placed = o.chickens.slice(0, SPOTS.length).map((c, i) => ({ c, spot: SPOTS[i] }));
   placed.sort((a, b) => a.spot[1] - b.spot[1]);
   const behind = placed.filter((p) => p.spot[1] < 0);
@@ -318,21 +402,21 @@ export function yardScene(o: SceneOptions): string {
     ? flower(40, 272, '#ff7aa2') + flower(56, 284, '#ffffff', 0.9) + flower(250, 286, '#b48cff') + flower(372, 222, '#ffffff', 0.9)
       + flower(384, 236, '#ff9f5a') + flower(152, 280, '#ffe066', 0.85)
     : '';
-  return `<svg class="scene${night ? ' night' : ''}" viewBox="${o.cosy ? '0 44 400 250' : '0 0 400 300'}" role="img" aria-label="The chicken yard">
-    ${DEFS}
-    ${sky(night)}
+  return `<svg class="scene" viewBox="${o.cosy ? '0 44 400 250' : '0 0 400 300'}" role="img" aria-label="The chicken yard">
+    ${DEFS}${SKY_DEFS}
+    ${sky(hour, light)}
     ${hills()}
     ${ground()}
     ${fence()}
     ${tuft(10, 160, 1.1, true)}${tuft(118, 156, 0.8)}${tuft(190, 154, 0.9, true)}${tuft(262, 155, 0.8)}${tuft(392, 160, 1.2, true)}
-    ${coop(night)}
+    ${coop(light < 0.5, asleep)}
     ${props()}
-    ${night ? '' : behind.map((p) => chicken(p.c, p.spot)).join('')}
+    ${asleep ? '' : behind.map((p) => chicken(p.c, p.spot)).join('')}
     ${pile(o.pile)}
-    ${night ? '' : front.map((p) => chicken(p.c, p.spot)).join('')}
+    ${asleep ? '' : front.map((p) => chicken(p.c, p.spot)).join('')}
     ${trough()}
     ${tuft(12, 300, 1.5, true)}${tuft(96, 301, 1.2)}${tuft(380, 300, 1.7, true)}${tuft(354, 301, 1.1)}${tuft(206, 302, 1)}
     ${cosy}
-    ${night ? nightLights() : ''}
+    ${lights(light, asleep)}
   </svg>`;
 }
