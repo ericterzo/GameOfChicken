@@ -95,6 +95,70 @@ describe('interruption', () => {
   });
 });
 
+describe('getting caught, start to finish', () => {
+  // Anna banks 100, then is 300 seconds into a new meal when Ben walks in.
+  function scene(mode: 'fatHen' | 'lastGrain' | 'sundown') {
+    let y = yard({ mode, goal: mode === 'sundown' ? null : 1000 });
+    y = stopEating(startEating(y, 'a', s(0), 100).yard, 'a', s(100)).yard;
+    y = leave(y, 'a');
+    const sizeBeforeMeal = sizeFor(y, 'a', s(150));
+    y = leave(startEating(y, 'a', s(200), 600).yard, 'a');
+    return { y, sizeBeforeMeal };
+  }
+
+  it('grows the chicken while it eats, then puts it back to its old size', () => {
+    const { y, sizeBeforeMeal } = scene('fatHen');
+    expect(sizeBeforeMeal).toBeCloseTo(0.1);
+    expect(sizeFor(y, 'a', s(500))).toBeCloseTo(0.4); // 100 banked + 300 on the plate
+    const after = touch(y, 'b', s(500)).yard;
+    expect(sizeFor(after, 'a', s(500))).toBeCloseTo(sizeBeforeMeal);
+    expect(sizeFor(after, 'a', s(900))).toBeCloseTo(sizeBeforeMeal); // and it stays there
+  });
+
+  it('takes every point of that meal and nothing from earlier meals', () => {
+    const { y } = scene('fatHen');
+    const r = touch(y, 'b', s(500));
+    expect(r.interrupted!.pointsLost).toBe(300);
+    expect(r.yard.members.a.points).toBe(100);
+    expect(livePoints(r.yard, 'a', s(500))).toBe(100);
+    expect(r.yard.eating).toBeNull();
+  });
+
+  it('banks a third for the catcher on the spot, with no meal needed', () => {
+    const { y } = scene('fatHen');
+    const after = touch(y, 'b', s(500)).yard;
+    expect(after.members.b.points).toBe(100);
+    expect(after.eating).toBeNull();
+    // It is safe at once: Anna walking back in cannot take it.
+    expect(touch(after, 'a', s(501)).yard.members.b.points).toBe(100);
+    expect(sizeFor(after, 'b', s(500))).toBeCloseTo(0.1);
+  });
+
+  it('puts the lost feed back in the pile where the pile is the feed (Last Grain)', () => {
+    const { y } = scene('lastGrain');
+    expect(pileFraction(y, s(500))).toBeCloseTo(0.6); // 100 banked + 300 being eaten
+    const after = touch(y, 'b', s(500)).yard;
+    // Only what is banked is gone: Anna's 100 and Ben's 100. The other 200 are back.
+    expect(pileFraction(after, s(500))).toBeCloseTo(0.8);
+    expect(1000 - after.members.a.points - after.members.b.points).toBe(800);
+  });
+
+  it('moves the Fat Hen pile back to match the biggest chicken', () => {
+    const { y } = scene('fatHen');
+    expect(pileFraction(y, s(500))).toBeCloseTo(0.6);
+    expect(pileFraction(touch(y, 'b', s(500)).yard, s(500))).toBeCloseTo(0.9);
+  });
+
+  it('works the same in Sundown, where the pile only follows the clock', () => {
+    const { y } = scene('sundown');
+    const before = pileFraction(y, s(500));
+    const after = touch(y, 'b', s(500)).yard;
+    expect(after.members.a.points).toBe(100);
+    expect(after.members.b.points).toBe(100);
+    expect(pileFraction(after, s(500))).toBe(before);
+  });
+});
+
 describe('standoff', () => {
   it('blocks eating while another chicken is present', () => {
     let y = touch(yard(), 'b', s(0)).yard;
