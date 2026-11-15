@@ -1,9 +1,12 @@
 import type { Look } from '../game/rules';
-import { BEAK_COLORS, BEAKS, BODY_COLORS, chickenSvg, COMB_COLORS, COMBS } from './chicken';
+import {
+  BEAK_COLORS, BEAKS, BODY_COLORS, chickenSvg, COMB_COLORS, COMBS, WACKY_BODY_COLORS, WATTLE_COLORS, WATTLES,
+} from './chicken';
 import { el } from './dom';
 
 const BEAK_LABELS: Record<Look['beak'], string> = { short: 'Short', long: 'Long', hooked: 'Hooked' };
 const COMB_LABELS: Record<Look['comb'], string> = { classic: 'Classic', spiky: 'Spiky', floppy: 'Floppy', none: 'None' };
+const WATTLE_LABELS: Record<string, string> = { classic: 'Classic', long: 'Long', double: 'Double', round: 'Round', none: 'None' };
 
 function swatches(key: keyof Look, colors: string[]): string {
   return `<div class="swatches">${colors.map((c) =>
@@ -19,13 +22,15 @@ function choices(key: keyof Look, values: string[], labels: Record<string, strin
 
 /** A chicken customiser. Call `get()` on the result for the current look. */
 export function lookEditor(initial: Look): { node: HTMLElement; get: () => Look } {
-  const look: Look = { ...initial };
+  // Chickens saved before wattles were editable get the look they always had.
+  const look: Look = { wattle: 'classic', wattleColor: initial.combColor, ...initial };
   const node = el(`<div class="editor">
     <div class="editor-preview"></div>
     <div class="editor-controls">
-      <div class="field"><span class="label">Feathers</span>${swatches('body', BODY_COLORS)}</div>
+      <div class="field"><span class="label">Feathers</span>${swatches('body', BODY_COLORS)}${swatches('body', WACKY_BODY_COLORS)}</div>
       <div class="field"><span class="label">Beak</span>${choices('beak', BEAKS, BEAK_LABELS)}${swatches('beakColor', BEAK_COLORS)}</div>
       <div class="field"><span class="label">Comb</span>${choices('comb', COMBS, COMB_LABELS)}${swatches('combColor', COMB_COLORS)}</div>
+      <div class="field"><span class="label">Wattle <small>under the beak</small></span>${choices('wattle', WATTLES, WATTLE_LABELS)}${swatches('wattleColor', WATTLE_COLORS)}</div>
     </div>
   </div>`);
   const preview = node.querySelector('.editor-preview')!;

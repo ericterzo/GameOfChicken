@@ -5,10 +5,33 @@ import type { Look } from '../game/rules.ts';
 const INK = '#4a3423';
 
 export const BODY_COLORS = ['#ffffff', '#f6e3b4', '#e8b56a', '#c9783a', '#8a4b2a', '#3d3a39', '#9aa3ad', '#f4b8c4'];
+/** The second, sillier row of feather colours. */
+export const WACKY_BODY_COLORS = ['#ff5fa2', '#e23b3b', '#ff8a2f', '#ffd93b', '#a4d63c', '#2fbf8f', '#3fa7f0', '#8e5bd9'];
 export const BEAK_COLORS = ['#f5a623', '#ffd23f', '#e8743b', '#6b6b6b'];
-export const COMB_COLORS = ['#d93025', '#ff6f91', '#f28c28', '#7a3fb5', '#2f9e6b'];
+export const COMB_COLORS = [
+  '#d93025', '#ff6f91', '#f28c28', '#7a3fb5', '#2f9e6b',
+  '#ffd23f', '#3fa7f0', '#ff3fb4', '#ffffff', '#262626',
+];
+export const WATTLE_COLORS = COMB_COLORS;
 export const BEAKS: Look['beak'][] = ['short', 'long', 'hooked'];
 export const COMBS: Look['comb'][] = ['classic', 'spiky', 'floppy', 'none'];
+export const WATTLES: NonNullable<Look['wattle']>[] = ['classic', 'long', 'double', 'round', 'none'];
+
+function wattle(kind: Look['wattle'], color: string): string {
+  const a = `fill="${color}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"`;
+  switch (kind) {
+    case 'none':
+      return '';
+    case 'long':
+      return `<path ${a} d="M79 42 q6 2 4.5 16 q-6.5 2 -6.5 -10 z"/>`;
+    case 'double':
+      return `<path ${a} d="M74 44 q4 2 2.5 8 q-5 1 -5 -4 z"/><path ${a} d="M79 42 q5 1 4 8 q-5 2 -6 -4 z"/>`;
+    case 'round':
+      return `<circle ${a} cx="80" cy="47.5" r="4.8"/>`;
+    default:
+      return `<path ${a} d="M79 42 q5 1 4 8 q-5 2 -6 -4 z"/>`;
+  }
+}
 
 const safeColor = (c: string, fallback: string) => (/^#[0-9a-fA-F]{3,8}$/.test(c) ? c : fallback);
 
@@ -56,7 +79,7 @@ export function chickenParts(look: Look, opts: { asleep?: boolean } = {}): strin
     <path d="M30 60 Q36 48 52 54 Q60 60 52 68 Q40 74 30 60 z" fill="#000" fill-opacity="0.09" ${s}/>
     <g transform="translate(0 -5)">${comb(look.comb, combC)}</g>
     ${beak(look.beak, beakC)}
-    <path d="M79 42 q5 1 4 8 q-5 2 -6 -4 z" fill="${combC}" ${s}/>
+    ${wattle(look.wattle, safeColor(look.wattleColor ?? combC, combC))}
     ${eye}`;
 }
 

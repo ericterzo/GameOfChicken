@@ -155,3 +155,7 @@ input:not([type='checkbox']):not([type='radio']), select {
 .or { display: flex; align-items: center; gap: 12px; margin: 10px 0; color: var(--muted); font-size: 0.85rem; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .btn.google { width: 100%; gap: 10px; border-color: #c9b48f; }
+.label small { display: inline; font-weight: 400; }
+/* Eight swatches per row on any phone, so each colour row stays one row. */
+.swatches { display: grid; grid-template-columns: repeat(8, minmax(0, 38px)); gap: 7px; }
+.swatch { width: 100%; height: auto; aspect-ratio: 1; }

@@ -10,6 +10,9 @@ export interface Look {
   beakColor: string;
   comb: 'classic' | 'spiky' | 'floppy' | 'none';
   combColor: string;
+  /** The wattle under the beak. Older chickens have none saved: classic, in the comb's colour. */
+  wattle?: 'classic' | 'long' | 'double' | 'round' | 'none';
+  wattleColor?: string;
 }
 
 export interface Member {
