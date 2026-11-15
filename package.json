@@ -1,0 +1,27 @@
+{
+  "name": "game-of-chicken",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run src",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-chicken-yard \"vitest run tests\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-chicken-yard",
+    "icons": "node scripts/make-icons.ts",
+    "deploy": "npm run build && firebase deploy"
+  },
+  "dependencies": {
+    "firebase": "^12.0.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase-tools": "^14.0.0",
+    "sharp": "^0.34.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,117 @@
+rules_version = '2';
+
+// The game's rules are computed in the app (src/game/rules.ts). These rules
+// stop outsiders and obvious tampering: only members can change a yard, the
+// yard's settings never change, nobody can start a meal for someone else, and
+// a finished yard's scores are frozen. They do not re-check every point, so a
+// determined member with developer tools could still cheat; a Cloud Function
+// would be needed to close that completely.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function nowMs() { return request.time.toMillis(); }
+    function fortnight() { return 14 * 24 * 3600 * 1000; }
+    function slack() { return 5 * 60 * 1000; } // tolerated phone clock error
+
+    match /usernames/{name} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && name.matches('^[a-z0-9_]{3,16}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == me();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && uid == me()
+        && request.resource.data.username is string
+        && request.resource.data.stats.gamesPlayed == 0
+        && request.resource.data.stats.wins == 0;
+      allow update: if signedIn() && uid == me()
+        && request.resource.data.username == resource.data.username;
+
+      match /inbox/{id} {
+        allow read, update, delete: if signedIn() && uid == me();
+        allow create: if signedIn()
+          && request.resource.data.byUid == me()
+          && request.resource.data.read == false;
+      }
+    }
+
+    match /yards/{yardId} {
+      function before() { return resource.data; }
+      function after() { return request.resource.data; }
+      function changed() { return after().diff(before()).affectedKeys(); }
+      function isMember() { return me() in before().memberUids; }
+
+      function settingsUnchanged() {
+        return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids']);
+      }
+
+      // A brand new meal (not just a heartbeat on the current one).
+      function startsMeal() {
+        return after().eating != null
+          && (before().eating == null || after().eating.startedAt != before().eating.startedAt);
+      }
+      function mealOk() {
+        return !startsMeal() || (
+          after().eating.uid == me()
+          && after().eating.startedAt > nowMs() - slack()
+          && after().eating.startedAt < nowMs() + slack()
+          && (after().hardcore
+              ? after().eating.endsAt == null
+              : after().eating.endsAt > after().eating.startedAt && after().eating.endsAt <= after().endsAt)
+        );
+      }
+
+      function memberMove() {
+        return isMember() && after().memberUids == before().memberUids;
+      }
+      function joining() {
+        return !isMember()
+          && before().status == 'active'
+          && before().memberUids.size() < 12
+          && after().memberUids == before().memberUids.concat([me()])
+          && after().members.diff(before().members).affectedKeys().hasOnly([me()])
+          && after().members[me()].points == 0
+          && !startsMeal();
+      }
+      // Once finished, a member may only touch their own entry, never scores.
+      function frozenOk() {
+        return before().status != 'finished' || (
+          after().status == 'finished'
+          && after().winnerUids == before().winnerUids
+          && after().eating == null
+          && after().members.diff(before().members).affectedKeys().hasOnly([me()])
+          && after().members[me()].points == before().members[me()].points
+        );
+      }
+
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && after().ownerUid == me()
+        && after().memberUids == [me()]
+        && after().members.keys().hasOnly([me()])
+        && after().members[me()].points == 0
+        && after().status == 'active'
+        && after().eating == null
+        && after().winnerUids.size() == 0
+        && after().name is string && after().name.size() > 0 && after().name.size() <= 30
+        && after().mode in ['lastGrain', 'sundown', 'fatHen']
+        && (after().mode == 'sundown' ? after().goal == null : after().goal >= 10)
+        && after().hardcore is bool
+        && (!after().hardcore || after().sleep == null)
+        && after().createdAt > nowMs() - slack() && after().createdAt < nowMs() + slack()
+        && after().endsAt > nowMs()
+        && after().endsAt <= nowMs() + fortnight() + slack();
+
+      allow update: if signedIn()
+        && settingsUnchanged()
+        && (memberMove() || joining())
+        && mealOk()
+        && frozenOk();
+    }
+  }
+}
