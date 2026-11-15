@@ -15,7 +15,10 @@ service cloud.firestore {
     function slack() { return 5 * 60 * 1000; } // tolerated phone clock error
 
     match /usernames/{name} {
-      allow read: if signedIn();
+      // Anyone may check whether one name is taken (needed before signing up);
+      // only signed-in players may browse.
+      allow get: if true;
+      allow list: if signedIn();
       allow create: if signedIn()
         && name.matches('^[a-z0-9_]{3,16}$')
         && request.resource.data.keys().hasOnly(['uid'])

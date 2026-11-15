@@ -1,8 +1,8 @@
 import './style.css';
 import type { App, Screen } from './app';
-import { onUser, signOut, watchProfile, type Profile } from './api';
+import { isSigningUp, onUser, signOut, watchProfile, type Profile } from './api';
 import { configMissing } from './firebase';
-import { authScreen } from './screens/auth';
+import { authScreen, usernameScreen } from './screens/auth';
 import { homeScreen } from './screens/home';
 import { chickenScreen, flockScreen } from './screens/profile';
 import { joinScreen, newYardScreen } from './screens/setup';
@@ -12,6 +12,7 @@ import { esc } from './ui/dom';
 const root = document.getElementById('app')!;
 let uid: string | null | undefined; // undefined = still finding out
 let profile: Profile | null = null;
+let profileLoaded = false;
 let stopProfile: (() => void) | null = null;
 let cleanup: (() => void) | void;
 const profileListeners = new Set<() => void>();
@@ -37,6 +38,8 @@ function route(): void {
       <p>This build has no Firebase settings. Follow “Going online” in README.md, then build again.</p></section>`;
     return;
   }
+  // Signed in but no profile: a first Google sign-in still needs a username.
+  if (uid && !profile && profileLoaded && !isSigningUp()) { usernameScreen(root, uid); return; }
   if (uid === undefined || (uid && !profile)) {
     root.innerHTML = '<p class="loading">Opening the coop…</p>';
     return;
@@ -62,12 +65,14 @@ onUser((next) => {
   stopProfile?.();
   stopProfile = null;
   profile = null;
+  profileLoaded = false;
   uid = next;
   if (next) {
     stopProfile = watchProfile(next, (p) => {
       const first = !profile;
       profile = p;
-      if (!p) return; // account is being created; the profile arrives in a moment
+      profileLoaded = true;
+      if (!p) { route(); return; } // no profile yet: being created, or needs a username
       if (first) route();
       else profileListeners.forEach((cb) => cb());
     });

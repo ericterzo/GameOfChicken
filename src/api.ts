@@ -1,7 +1,8 @@
 // Everything that talks to Firebase. Game decisions are made by src/game/rules.ts;
 // this file only loads a yard, applies a rule inside a transaction, and saves it.
 import {
-  createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut,
+  createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword,
+  signInWithPopup, signOut as fbSignOut,
 } from 'firebase/auth';
 import {
   addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, query,
@@ -76,16 +77,60 @@ export async function signUp(username: string, password: string): Promise<void> 
   if (!USERNAME_RE.test(username)) {
     throw new ApiError('Usernames are 3–16 letters, numbers or underscores.');
   }
+  signingUp = true;
   try {
+    // Google players can hold a username too, so check the shared register first.
+    if ((await getDoc(doc(db, 'usernames', username.toLowerCase()))).exists()) {
+      throw new ApiError('That username is taken.');
+    }
     const cred = await createUserWithEmailAndPassword(auth, emailFor(username), password);
-    const uid = cred.user.uid;
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'usernames', username.toLowerCase()), { uid });
-    batch.set(doc(db, 'users', uid), {
-      username, look: DEFAULT_LOOK, lookEverywhere: false, friends: [], stats: EMPTY_STATS,
-    });
-    await batch.commit();
+    await writeProfile(cred.user.uid, username);
   } catch (e) {
+    throw friendly(e);
+  } finally {
+    signingUp = false;
+  }
+}
+
+let signingUp = false;
+/** True while a username + password account is half made (signed in, profile not yet saved). */
+export const isSigningUp = () => signingUp;
+
+async function writeProfile(uid: string, username: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'usernames', username.toLowerCase()), { uid });
+  batch.set(doc(db, 'users', uid), {
+    username, look: DEFAULT_LOOK, lookEverywhere: false, friends: [], stats: EMPTY_STATS,
+  });
+  await batch.commit();
+}
+
+/** Sign in with a Google account. New players then pick a username (see claimUsername). */
+export async function signInWithGoogle(): Promise<void> {
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    const code = (e as { code?: string })?.code ?? '';
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+    if (code === 'auth/popup-blocked') throw new ApiError('Your browser blocked the Google window. Allow pop-ups and try again.');
+    if (code === 'auth/operation-not-allowed') throw new ApiError('Google sign-in is not switched on for this game yet.');
+    throw friendly(e);
+  }
+}
+
+/** A signed-in player without a profile (first Google sign-in) chooses their username. */
+export async function claimUsername(uid: string, username: string): Promise<void> {
+  username = username.trim();
+  if (!USERNAME_RE.test(username)) {
+    throw new ApiError('Usernames are 3–16 letters, numbers or underscores.');
+  }
+  try {
+    if ((await getDoc(doc(db, 'usernames', username.toLowerCase()))).exists()) {
+      throw new ApiError('That username is taken.');
+    }
+    await writeProfile(uid, username);
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError('That username is taken.');
     throw friendly(e);
   }
 }

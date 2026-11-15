@@ -151,3 +151,7 @@ input:not([type='checkbox']):not([type='radio']), select {
   .pecking { animation: none; transform: rotate(18deg); }
   #toast { transition: none; }
 }
+
+.or { display: flex; align-items: center; gap: 12px; margin: 10px 0; color: var(--muted); font-size: 0.85rem; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.btn.google { width: 100%; gap: 10px; border-color: #c9b48f; }
