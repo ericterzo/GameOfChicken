@@ -17,6 +17,9 @@ export const num = (n: number) => Math.floor(n).toLocaleString();
 /** "2d 3h", "5m 10s", "42s" */
 export function span(ms: number): string {
   let s = Math.max(0, Math.round(ms / 1000));
+  // Round to the smallest unit shown, so 13d 23h 59m reads as 14d.
+  if (s >= 86400) s = Math.round(s / 3600) * 3600;
+  else if (s >= 3600) s = Math.round(s / 60) * 60;
   const d = Math.floor(s / 86400); s -= d * 86400;
   const h = Math.floor(s / 3600); s -= h * 3600;
   const m = Math.floor(s / 60); s -= m * 60;

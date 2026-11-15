@@ -7,10 +7,14 @@ import { busy, dateTime, el, esc, span, toast } from '../ui/dom';
 import { lookEditor } from '../ui/lookEditor';
 
 const HOUR = 3600_000;
-const LENGTHS: [string, number][] = [
-  ['1 hour', HOUR], ['6 hours', 6 * HOUR], ['1 day', 24 * HOUR], ['3 days', 72 * HOUR],
-  ['1 week', 168 * HOUR], ['2 weeks', MAX_YARD_MS],
-];
+// Every hour from 1 to 23, then every day from 1 to 14 (the longest a yard may last).
+const HOUR_LENGTHS: [string, number][] = Array.from({ length: 23 }, (_, i) =>
+  [`${i + 1} ${i ? 'hours' : 'hour'}`, (i + 1) * HOUR]);
+const DAY_LENGTHS: [string, number][] = Array.from({ length: MAX_YARD_MS / (24 * HOUR) }, (_, i) =>
+  [`${i + 1} ${i ? 'days' : 'day'}`, (i + 1) * 24 * HOUR]);
+const DEFAULT_LENGTH = 24 * HOUR;
+const lengthOptions = (list: [string, number][]) => list.map(([t, ms]) =>
+  `<option value="${ms}" ${ms === DEFAULT_LENGTH ? 'selected' : ''}>${t}</option>`).join('');
 
 /** The "which chicken?" block: personal chicken by default, editable per yard. */
 function chickenPicker(app: App): { node: HTMLElement; get: () => Look } {
@@ -58,7 +62,9 @@ export const newYardScreen: Screen = (root, app) => {
         <small class="muted">One point is one second of eating. 3,600 is an hour’s worth.</small></label>
 
       <label>Yard stays open for
-        <select name="duration">${LENGTHS.map(([t, ms], i) => `<option value="${ms}" ${i === 2 ? 'selected' : ''}>${t}</option>`).join('')}
+        <select name="duration">
+          <optgroup label="Hours">${lengthOptions(HOUR_LENGTHS)}</optgroup>
+          <optgroup label="Days">${lengthOptions(DAY_LENGTHS)}</optgroup>
           <option value="custom">Until a date I pick…</option></select></label>
       <label id="until-row" hidden>Closes at<input name="until" type="datetime-local">
         <small class="muted">At most a fortnight from now.</small></label>
