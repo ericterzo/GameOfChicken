@@ -64,8 +64,10 @@ npm run test:rules
 ## Going online
 
 1. Create a free project at <https://console.firebase.google.com> (the Spark plan is enough).
-2. In the project: **Build → Authentication → Sign-in method → Email/Password → Enable**. Players only ever see usernames; the game builds a placeholder address behind the scenes.
-3. **Build → Firestore Database → Create database** (production mode).
+2. In the project: **Security → Authentication → Sign-in method** (older consoles: Build → Authentication).
+   - **Email/Password → Enable**. Players only ever see usernames; the game builds a placeholder address behind the scenes.
+   - **Google → Enable**, pick a support email, **Save**. This powers "Continue with Google"; first-time Google players choose a username. The SHA-1 warning is for native Android apps and can be ignored.
+3. **Databases & Storage → Firestore → Create database** (production mode).
 4. **Project settings → Your apps → Web (`</>`)**, register an app, and copy the config values into a new file called `.env` (see `.env.example`).
 5. Sign in and pick the project:
 
@@ -97,4 +99,4 @@ Firebase prints the game's address (`https://<project>.web.app`). On Android, op
 
 - A phone's clock is trusted to within a few minutes.
 - Sleep hours ignore daylight-saving changes during a yard's (at most two-week) life.
-- No password reset: accounts have no real email address.
+- No password reset for username + password accounts: they have no real email address. Google sign-in avoids this.
