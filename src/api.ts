@@ -1,8 +1,9 @@
 // Everything that talks to Firebase. Game decisions are made by src/game/rules.ts;
 // this file only loads a yard, applies a rule inside a transaction, and saves it.
 import {
-  createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword,
-  signInWithPopup, signOut as fbSignOut,
+  createUserWithEmailAndPassword, deleteUser, EmailAuthProvider, GoogleAuthProvider, onAuthStateChanged,
+  reauthenticateWithCredential, reauthenticateWithPopup, signInWithEmailAndPassword, signInWithPopup,
+  signOut as fbSignOut,
 } from 'firebase/auth';
 import {
   addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
@@ -54,7 +55,13 @@ const EMPTY_STATS: Stats = {
 
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 // Sign-in uses Firebase email/password; players only ever see a username.
-const emailFor = (username: string) => `${username.toLowerCase()}@chickenyard.example.com`;
+// The address is built from a "login id" that never changes, so a player can
+// rename themselves freely. The username register maps each name to its login
+// id; accounts made before renaming existed have none, and their login id is
+// simply the name they signed up with.
+const emailFor = (login: string) => `${login.toLowerCase()}@chickenyard.example.com`;
+const newLoginId = () => `u${Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('')}`;
+const DEPARTED = 'Departed chicken';
 
 export class ApiError extends Error {}
 
@@ -83,8 +90,9 @@ export async function signUp(username: string, password: string): Promise<void> 
     if ((await getDoc(doc(db, 'usernames', username.toLowerCase()))).exists()) {
       throw new ApiError('That username is taken.');
     }
-    const cred = await createUserWithEmailAndPassword(auth, emailFor(username), password);
-    await writeProfile(cred.user.uid, username);
+    const login = newLoginId();
+    const cred = await createUserWithEmailAndPassword(auth, emailFor(login), password);
+    await writeProfile(cred.user.uid, username, login);
   } catch (e) {
     throw friendly(e);
   } finally {
@@ -96,9 +104,9 @@ let signingUp = false;
 /** True while a username + password account is half made (signed in, profile not yet saved). */
 export const isSigningUp = () => signingUp;
 
-async function writeProfile(uid: string, username: string): Promise<void> {
+async function writeProfile(uid: string, username: string, login?: string): Promise<void> {
   const batch = writeBatch(db);
-  batch.set(doc(db, 'usernames', username.toLowerCase()), { uid });
+  batch.set(doc(db, 'usernames', username.toLowerCase()), login ? { uid, login } : { uid });
   batch.set(doc(db, 'users', uid), {
     username, look: DEFAULT_LOOK, lookEverywhere: false, friends: [], stats: EMPTY_STATS,
   });
@@ -137,7 +145,11 @@ export async function claimUsername(uid: string, username: string): Promise<void
 
 export async function signIn(username: string, password: string): Promise<void> {
   try {
-    await signInWithEmailAndPassword(auth, emailFor(username.trim()), password);
+    const key = username.trim().toLowerCase();
+    if (!key) throw new ApiError('Type your username.');
+    const entry = await getDoc(doc(db, 'usernames', key));
+    if (!entry.exists()) throw new ApiError('Wrong username or password.');
+    await signInWithEmailAndPassword(auth, emailFor((entry.data().login as string | undefined) ?? key), password);
   } catch (e) {
     throw friendly(e);
   }
@@ -178,6 +190,89 @@ export async function getLeaderboard(key: keyof Stats | 'username', desc: boolea
 
 export async function saveLook(uid: string, look: Look, lookEverywhere: boolean): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { look, lookEverywhere });
+}
+
+// ---------- renaming and deleting the account ----------
+
+/** True if this player signs in with a username and password (rather than Google). */
+export function hasPassword(): boolean {
+  return !!auth.currentUser?.providerData.some((p) => p.providerId === 'password');
+}
+
+/** Rewrite the name shown for me in the yards I belong to. Best effort. */
+async function renameInYards(uid: string, username: string): Promise<void> {
+  try {
+    const snap = await getDocs(query(collection(db, 'yards'), where('memberUids', 'array-contains', uid)));
+    await Promise.all(snap.docs.map((d) => updateDoc(d.ref, { [`members.${uid}.username`]: username }).catch(() => {})));
+  } catch {
+    /* old yards keep the old name */
+  }
+}
+
+export async function renameUser(me: Profile, wanted: string): Promise<void> {
+  const username = wanted.trim();
+  if (!USERNAME_RE.test(username)) throw new ApiError('Usernames are 3–16 letters, numbers or underscores.');
+  if (username === me.username) return;
+  const oldKey = me.username.toLowerCase();
+  const newKey = username.toLowerCase();
+  try {
+    const batch = writeBatch(db);
+    if (newKey !== oldKey) {
+      if ((await getDoc(doc(db, 'usernames', newKey))).exists()) throw new ApiError('That username is taken.');
+      // Carry the login id across so the password keeps working under the new name.
+      const old = await getDoc(doc(db, 'usernames', oldKey));
+      const login = (old.data()?.login as string | undefined) ?? (hasPassword() ? oldKey : undefined);
+      batch.set(doc(db, 'usernames', newKey), login ? { uid: me.uid, login } : { uid: me.uid });
+      batch.delete(doc(db, 'usernames', oldKey));
+    }
+    batch.update(doc(db, 'users', me.uid), { username });
+    await batch.commit();
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError('That username is taken.');
+    throw friendly(e);
+  }
+  await renameInYards(me.uid, username);
+}
+
+/**
+ * Delete the account for good: profile, record, username, inbox and sign-in.
+ * Past yards keep the scores (other players' results depend on them) under an
+ * anonymous name. `password` is needed for username + password accounts;
+ * Google accounts confirm in a Google window instead.
+ */
+export async function deleteAccount(me: Profile, password: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new ApiError('You are not signed in.');
+  try {
+    // Firebase only deletes an account that has just proved who it is.
+    if (hasPassword()) {
+      if (!password) throw new ApiError('Type your password to confirm.');
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email!, password));
+    } else {
+      await reauthenticateWithPopup(user, new GoogleAuthProvider());
+    }
+  } catch (e) {
+    const code = (e as { code?: string })?.code ?? '';
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') throw new ApiError('Deletion cancelled.');
+    if (code === 'auth/user-mismatch') throw new ApiError('That is a different Google account.');
+    if (code.startsWith('auth/') && hasPassword()) throw new ApiError('Wrong password.');
+    throw friendly(e);
+  }
+  signingUp = true; // keeps the app on its loading screen while the pieces are removed
+  try {
+    await renameInYards(me.uid, DEPARTED);
+    const inbox = await getDocs(collection(db, 'users', me.uid, 'inbox'));
+    const batch = writeBatch(db);
+    inbox.docs.slice(0, 400).forEach((d) => batch.delete(d.ref));
+    batch.delete(doc(db, 'users', me.uid));
+    batch.delete(doc(db, 'usernames', me.username.toLowerCase()));
+    await batch.commit();
+    await deleteUser(user);
+  } catch (e) {
+    throw friendly(e);
+  } finally {
+    signingUp = false;
+  }
 }
 
 // ---------- friends ----------
