@@ -231,3 +231,7 @@ input:not([type='checkbox']):not([type='radio']), select {
 .modes-help dt { font-weight: 800; }
 .modes-help dd { margin: 2px 0 0; line-height: 1.45; }
 .help .btn { margin-top: 12px; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.danger-zone { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+.danger-zone summary { display: inline-block; list-style: none; }
+.danger-zone summary::-webkit-details-marker { display: none; }

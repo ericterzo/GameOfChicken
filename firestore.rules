@@ -24,9 +24,15 @@ service cloud.firestore {
       // lower case, so "Anna" and "anna" are the same name.
       allow create: if signedIn()
         && name.matches('^[a-z0-9_]{3,16}$')
-        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.keys().hasOnly(['uid', 'login'])
         && request.resource.data.uid == me()
         && getAfter(/databases/$(database)/documents/users/$(me())).data.username.lower() == name;
+      // A name is released only by its holder, and only when they stop using it:
+      // on renaming (the profile now carries another name) or deleting the account.
+      allow delete: if signedIn()
+        && resource.data.uid == me()
+        && (!existsAfter(/databases/$(database)/documents/users/$(me()))
+            || getAfter(/databases/$(database)/documents/users/$(me())).data.username.lower() != name);
     }
 
     match /users/{uid} {
@@ -37,8 +43,16 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username.lower())).data.uid == me()
         && request.resource.data.stats.gamesPlayed == 0
         && request.resource.data.stats.wins == 0;
+      // Renaming is allowed only to a name its owner holds in the register.
       allow update: if signedIn() && uid == me()
-        && request.resource.data.username == resource.data.username;
+        && (request.resource.data.username == resource.data.username
+            || (getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username.lower())).data.uid == me()
+                // ...and the old name is released in the same step (unless only the capitals changed).
+                && (request.resource.data.username.lower() == resource.data.username.lower()
+                    || !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.username.lower())))));
+      // Deleting the account must release its name in the same step.
+      allow delete: if signedIn() && uid == me()
+        && !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.username.lower()));
 
       match /inbox/{id} {
         allow read, update, delete: if signedIn() && uid == me();

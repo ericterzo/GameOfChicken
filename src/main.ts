@@ -78,7 +78,11 @@ onUser((next) => {
       profileLoaded = true;
       if (!p) { route(); return; } // no profile yet: being created, or needs a username
       if (first) route();
-      else profileListeners.forEach((cb) => cb());
+      else {
+        const shown = root.querySelector('.foot strong');
+        if (shown) shown.textContent = p.username; // a rename shows at once
+        profileListeners.forEach((cb) => cb());
+      }
     });
   }
   route();

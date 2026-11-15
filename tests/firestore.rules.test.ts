@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import {
   createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
 } from '../src/game/rules';
@@ -70,6 +70,48 @@ describe('accounts', () => {
     await assertFails(setDoc(doc(dbFor('ben'), 'usernames/spare'), { uid: 'ben' }));
     // A second name for someone who already has one.
     await assertFails(setDoc(doc(dbFor('anna'), 'usernames/anna2'), { uid: 'anna' }));
+  });
+
+  it('lets a player rename to a free name, releasing the old one', async () => {
+    await assertSucceeds(claim('anna', 'Anna'));
+    await assertSucceeds(claim('ben', 'Ben'));
+    const rename = (uid: string, from: string, to: string) => {
+      const db = dbFor(uid);
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'usernames', to.toLowerCase()), { uid, login: from.toLowerCase() });
+      batch.delete(doc(db, 'usernames', from.toLowerCase()));
+      batch.update(doc(db, 'users', uid), { username: to });
+      return batch.commit();
+    };
+    await assertFails(rename('anna', 'Anna', 'Ben')); // taken
+    await assertSucceeds(rename('anna', 'Anna', 'Queen'));
+    await assertSucceeds(updateDoc(doc(dbFor('anna'), 'users/anna'), { username: 'QUEEN' })); // capitals only
+    // The old name is free again, and nobody else could have released it.
+    await assertFails(deleteDoc(doc(dbFor('ben'), 'usernames/queen')));
+    await assertSucceeds(claim('carl', 'Anna'));
+    // A player cannot drop their own name while still using it, or keep two.
+    await assertFails(deleteDoc(doc(dbFor('ben'), 'usernames/ben')));
+    const bens = dbFor('ben');
+    const greedy = writeBatch(bens);
+    greedy.set(doc(bens, 'usernames/benny'), { uid: 'ben' });
+    greedy.update(doc(bens, 'users/ben'), { username: 'Benny' });
+    await assertFails(greedy.commit()); // taking a new name without releasing the old one
+  });
+
+  it('lets a player delete their own account, name included, and nobody else\'s', async () => {
+    await assertSucceeds(claim('anna', 'Anna'));
+    await assertSucceeds(claim('ben', 'Ben'));
+    const remove = (actor: string, uid: string, name: string) => {
+      const db = dbFor(actor);
+      const batch = writeBatch(db);
+      batch.delete(doc(db, 'users', uid));
+      batch.delete(doc(db, 'usernames', name));
+      return batch.commit();
+    };
+    await assertFails(remove('ben', 'anna', 'anna'));
+    await assertFails(deleteDoc(doc(dbFor('anna'), 'users/anna'))); // must release the name too
+    await assertSucceeds(remove('anna', 'anna', 'anna'));
+    await assertSucceeds(claim('carl', 'Anna'));
   });
 
   it('keeps everything from signed-out visitors', async () => {

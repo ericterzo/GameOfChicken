@@ -1,6 +1,9 @@
 // "My chicken" (the personal chicken) and "Flock" (stats and friends).
 import type { Screen } from '../app';
-import { addFriend, getLeaderboard, getProfiles, removeFriend, saveLook, type Profile, type Stats } from '../api';
+import {
+  addFriend, deleteAccount, getLeaderboard, getProfiles, hasPassword, removeFriend, renameUser, saveLook,
+  type Profile, type Stats,
+} from '../api';
 import { chickenSvg } from '../ui/chicken';
 import { busy, esc, num, toast } from '../ui/dom';
 import { lookEditor } from '../ui/lookEditor';
@@ -17,6 +20,24 @@ export const chickenScreen: Screen = (root, app) => {
         <span><strong>Use this chicken in every yard</strong><small>Skip the chicken picker when starting or joining a yard.</small></span></label>
       <button class="btn primary" id="save" type="button">Save my chicken</button>
       <p class="muted small">Yards you are already in keep the chicken you chose for them.</p>
+    </section>
+    <section class="card form">
+      <h2>Account</h2>
+      <form id="rename">
+        <label>Username<input name="username" required minlength="3" maxlength="16" value="${esc(p.username)}" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+        <button class="btn" type="submit">Change username</button>
+      </form>
+      <p class="muted small">Your record, flock and yards come with you. ${hasPassword() ? 'You sign in with the new name and the same password. ' : ''}The old name becomes free for someone else.</p>
+      <details class="danger-zone">
+        <summary class="link danger">Delete my account</summary>
+        <p>This removes your chicken, your record, your username and your sign-in for good. It cannot be undone. Yards you played in keep your scores under the name “Departed chicken”.</p>
+        <form id="delete">
+          ${hasPassword()
+            ? '<label>Password, to confirm<input name="password" type="password" required autocomplete="current-password"></label>'
+            : '<p class="muted small">Google will ask you to confirm it is you.</p>'}
+          <button class="btn danger" type="submit">Delete my account forever</button>
+        </form>
+      </details>
     </section>`;
   const editor = lookEditor(p.look);
   root.querySelector('#editor')!.append(editor.node);
@@ -25,6 +46,27 @@ export const chickenScreen: Screen = (root, app) => {
     await saveLook(p.uid, editor.get(), root.querySelector<HTMLInputElement>('#everywhere')!.checked);
     toast('Chicken saved.', 'good');
   });
+
+  const rename = root.querySelector<HTMLFormElement>('#rename')!;
+  rename.onsubmit = (e) => {
+    e.preventDefault();
+    void busy(rename.querySelector('button'), async () => {
+      const wanted = rename.username.value.trim();
+      if (wanted === app.profile.username) return;
+      await renameUser(app.profile, wanted);
+      toast(`You are now ${wanted}.`, 'good');
+    });
+  };
+  const del = root.querySelector<HTMLFormElement>('#delete')!;
+  del.onsubmit = (e) => {
+    e.preventDefault();
+    if (!confirm('Delete your account for good? This cannot be undone.')) return;
+    const password = (del.elements.namedItem('password') as HTMLInputElement | null)?.value ?? '';
+    void busy(del.querySelector('button'), async () => {
+      await deleteAccount(app.profile, password);
+      toast('Your account is deleted. Goodbye!', 'info');
+    });
+  };
 };
 
 function statGrid(s: Stats): string {
