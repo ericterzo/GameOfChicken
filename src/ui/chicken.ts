@@ -61,6 +61,47 @@ function beak(kind: Look['beak'], color: string): string {
   }
 }
 
+function eyepatch(): string {
+  const black = '#1f1a17';
+  return `<path d="M62.5 22.5 L84.6 31.5" fill="none" stroke="${black}" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M68 26.4 L78.4 28.4 Q79 36.4 73 37 Q67.2 35.4 68 26.4 z" fill="${black}" stroke="${black}" stroke-width="1" stroke-linejoin="round"/>`;
+}
+
+/** The pinched-fingers hand, held up in front of the chest. */
+function hand(): string {
+  const a = `fill="#ffcf5c" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"`;
+  return `<g class="ck-hand">
+    <path ${a} d="M83.4 74 L83 69.5 Q79.4 65 82 59.6 Q83 54.4 85.3 53.4 Q86.4 50.6 88 53 Q89.6 50.6 90.7 53.4 Q93 54.4 94 59.6 Q96.6 65 93 69.5 L92.6 74 z"/>
+    <path d="M88 53.4 V63 M85.4 54 Q85 59 86.2 63 M90.6 54 Q91 59 89.8 63 M82.6 60.4 Q81.4 64.6 84.6 67.4" fill="none" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"/>
+    <rect x="81.6" y="73" width="12.8" height="6" rx="1.5" fill="#fff" stroke="${INK}" stroke-width="1.8"/>
+  </g>`;
+}
+
+/**
+ * A crown on top of the head. The big one is three times the size, with
+ * pearls, a jewelled band, a velvet cap and sparkles.
+ */
+function crown(kind: 'small' | 'big'): string {
+  const big = kind === 'big';
+  const w = big ? 0.7 : 1.6; // line width, so the big crown's outline is not three times as heavy
+  const gold = `fill="#ffd23f" stroke="${INK}" stroke-width="${w}" stroke-linejoin="round"`;
+  const gem = (x: number, y: number, r: number, c: string) =>
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="${INK}" stroke-width="${w * 0.6}"/>`;
+  const spark = (x: number, y: number, k: number) =>
+    `<path class="ck-spark" d="M${x} ${y - 2.4 * k} L${x + 0.6 * k} ${y - 0.6 * k} L${x + 2.4 * k} ${y} L${x + 0.6 * k} ${y + 0.6 * k} L${x} ${y + 2.4 * k} L${x - 0.6 * k} ${y + 0.6 * k} L${x - 2.4 * k} ${y} L${x - 0.6 * k} ${y - 0.6 * k} z" fill="#fff8c9" stroke="#e0a400" stroke-width="0.25"/>`;
+  const points = 'M-10 0 L-11.5 -10.5 L-5.5 -5 L0 -12.5 L5.5 -5 L11.5 -10.5 L10 0 z';
+  const plain = `<path ${gold} d="${points}"/>${gem(0, -3.2, 1.5, '#d93025')}`;
+  const bling = `<path d="M-9.4 -1 L-10.6 -9 L-5.5 -4.2 L0 -11 L5.5 -4.2 L10.6 -9 L9.4 -1 z" fill="#b3202c"/>
+    <path ${gold} fill-rule="evenodd" d="${points} M-8 -3.6 L-8.7 -7.4 L-5.6 -4.4 z M8 -3.6 L8.7 -7.4 L5.6 -4.4 z M-3.4 -4.4 L0 -9.2 L3.4 -4.4 z"/>
+    <path d="M-10.2 -3.4 H10.2" stroke="${INK}" stroke-width="${w}"/>
+    <path d="M-10 -1.7 H10" stroke="#fff3b0" stroke-width="0.6"/>
+    ${gem(-11.5, -10.9, 1.2, '#ffffff')}${gem(11.5, -10.9, 1.2, '#ffffff')}${gem(0, -13.2, 1.5, '#ffffff')}
+    ${gem(-6.6, -1.7, 1, '#3fa7f0')}${gem(-3.3, -1.7, 1, '#2f9e6b')}${gem(0, -1.7, 1.2, '#d93025')}${gem(3.3, -1.7, 1, '#2f9e6b')}${gem(6.6, -1.7, 1, '#3fa7f0')}
+    ${gem(0, -6.2, 1.1, '#7a3fb5')}
+    ${spark(-13.5, -4.5, 1)}${spark(14, -7.5, 0.8)}${spark(6.5, -14.5, 0.7)}${spark(-7, -13, 0.55)}`;
+  return `<g class="ck-crown" transform="translate(72.5 ${big ? 21 : 19.6}) rotate(6) scale(${big ? 3 : 1})">${big ? bling : plain}</g>`;
+}
+
 /** Inner SVG markup for one chicken, to be placed inside any <svg> or <g>. */
 export function chickenParts(look: Look, opts: { asleep?: boolean } = {}): string {
   const body = safeColor(look.body, '#ffffff');
@@ -80,13 +121,16 @@ export function chickenParts(look: Look, opts: { asleep?: boolean } = {}): strin
     <g transform="translate(0 -5)">${comb(look.comb, combC)}</g>
     ${beak(look.beak, beakC)}
     ${wattle(look.wattle, safeColor(look.wattleColor ?? combC, combC))}
-    ${eye}`;
+    ${eye}
+    ${look.eyepatch ? eyepatch() : ''}
+    ${look.crown === 'small' || look.crown === 'big' ? crown(look.crown) : ''}
+    ${look.hand ? hand() : ''}`;
 }
 
 /** A standalone chicken picture. */
 export function chickenSvg(look: Look, opts: { px?: number; pecking?: boolean; asleep?: boolean } = {}): string {
   const px = opts.px ?? 96;
-  return `<svg class="chicken" viewBox="0 0 100 100" width="${px}" height="${px}" aria-hidden="true">
+  return `<svg class="chicken" overflow="visible" viewBox="0 0 100 100" width="${px}" height="${px}" aria-hidden="true">
     <g class="${opts.pecking ? 'pecking' : ''}">${chickenParts(look, opts)}</g></svg>`;
 }
 

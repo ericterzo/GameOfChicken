@@ -11,6 +11,7 @@ import {
 } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
 import { busy, clock, dateTime, esc, num, span, toast } from '../ui/dom';
+import { t } from '../i18n';
 import { sceneClock, yardScene, type SceneChicken } from '../ui/yardScene';
 
 const TIMERS: [string, number][] = [
@@ -32,15 +33,15 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
   root.innerHTML = `
     <section class="yard">
-      <header class="yard-head"><p class="muted">Walking to the yard…</p></header>
+      <header class="yard-head"><p class="muted">${t('Walking to the yard…')}</p></header>
       <div class="scene-wrap" id="scene"></div>
       <div class="card panel" id="panel"></div>
       <div class="card" id="board"></div>
       <div class="card notice" id="notice" hidden>
-        <h2>Notice board</h2>
+        <h2>${t('Notice board')}</h2>
         <form id="note-form" class="join">
-          <input name="text" maxlength="${MAX_NOTE}" placeholder="Leave a note for the flock" autocomplete="off" aria-label="Leave a note for the flock">
-          <button class="btn" type="submit">Post</button>
+          <input name="text" maxlength="${MAX_NOTE}" placeholder="${t('Leave a note for the flock')}" autocomplete="off" aria-label="${t('Leave a note for the flock')}">
+          <button class="btn" type="submit">${t('Post')}</button>
         </form>
         <ol class="notes" id="notes"></ol>
       </div>
@@ -68,7 +69,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const hit = r.interrupted;
       if (hit) {
         const who = r.yard.members[hit.victimUid].username;
-        toast(`You caught ${who} eating! Their ${num(hit.pointsLost)} are gone, you get ${num(hit.pointsGained)}.`, 'good');
+        toast(t('You caught {0} eating! Their {1} are gone, you get {2}.', who, num(hit.pointsLost), num(hit.pointsGained)), 'good');
       }
     } catch (e) {
       console.warn('touch failed', e);
@@ -108,23 +109,23 @@ export const yardScreen: Screen = (root, app, [id]) => {
   // ----- drawing -----
 
   function paintHead(y: Yard, now: number): void {
-    const when = y.status === 'finished' ? 'Closed'
-      : y.status === 'waiting' ? `Not started · runs for ${span(y.endsAt - y.createdAt)}`
-      : `Closes in ${span(y.endsAt - now)}`;
-    const html = `<a class="back" href="#/" aria-label="Back to home">‹</a>
+    const when = y.status === 'finished' ? t('Closed')
+      : y.status === 'waiting' ? t('Not started · runs for {0}', span(y.endsAt - y.createdAt))
+      : t('Closes in {0}', span(y.endsAt - now));
+    const html = `<a class="back" href="#/" aria-label="${t('Back to home')}">‹</a>
       <div class="yard-title"><h1>${esc(y.name)}</h1>
-        <p><span class="tag-pill">${MODE_NAMES[y.mode]}</span>${y.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}
+        <p><span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}
         <span class="muted" title="${esc(dateTime(y.endsAt))}">${when}</span></p></div>
-      <button class="btn small" id="share" type="button">Invite · ${esc(y.joinCode)}</button>`;
+      <button class="btn small" id="share" type="button">${t('Invite')} · ${esc(y.joinCode)}</button>`;
     if (head.dataset.html === html) return;
     head.dataset.html = html;
     head.innerHTML = html;
     head.querySelector<HTMLButtonElement>('#share')!.onclick = async () => {
       const url = `${location.origin}${location.pathname}#/join/${y.joinCode}`;
-      const text = `Join my chicken yard "${y.name}". Code: ${y.joinCode}`;
+      const text = t('Join my chicken yard “{0}”. Code: {1}', y.name, y.joinCode);
       try {
-        if (navigator.share) await navigator.share({ title: 'The Game of Chicken', text, url });
-        else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Invite copied.', 'good'); }
+        if (navigator.share) await navigator.share({ title: t('The Game of Chicken'), text, url });
+        else { await navigator.clipboard.writeText(`${text}\n${url}`); toast(t('Invite copied.'), 'good'); }
       } catch { /* share sheet dismissed */ }
     };
   }
@@ -153,22 +154,22 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
   /** Who has been invited and not answered, shown under the scores. */
   function pendingLine(y: Yard): string {
-    const names = (y.invitedUids ?? []).map((u) => y.invitedNames?.[u] ?? 'A chicken');
+    const names = (y.invitedUids ?? []).map((u) => y.invitedNames?.[u] ?? t('A chicken'));
     if (!names.length || y.status === 'finished') return '';
-    return `<p class="muted small pending">Invited, no answer yet: ${esc(names.join(', '))}</p>`;
+    return `<p class="muted small pending">${t('Invited, no answer yet: {0}', esc(names.join(', ')))}</p>`;
   }
 
   function paintBoard(y: Yard, now: number): void {
     const rows = y.memberUids
       .map((u) => ({ u, m: y.members[u], pts: livePoints(y, u, now) }))
       .sort((a, b) => b.pts - a.pts || a.m.username.localeCompare(b.m.username));
-    const goal = y.goal ? ` <span class="muted">of ${num(y.goal)}</span>` : '';
-    const html = `<h2>Pecking order</h2><ol class="board">${rows.map(({ u, m, pts }) => {
+    const goal = y.goal ? ` <span class="muted">${t('of {0}', num(y.goal))}</span>` : '';
+    const html = `<h2>${t('Pecking order')}</h2><ol class="board">${rows.map(({ u, m, pts }) => {
       const px = Math.round(30 + 26 * sizeFor(y, u, now));
-      const here = y.status === 'active' && (y.eating?.uid === u ? 'eating' : now - m.lastSeen < PRESENCE_MS || u === uid ? 'in the yard' : '');
+      const here = y.status === 'active' && (y.eating?.uid === u ? t('eating') : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
       const won = y.status === 'finished' && y.winnerUids.includes(u);
       return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken">${chickenSvg(m.look, { px })}</span>
-        <span class="board-name">${esc(m.username)}${won ? ' <span class="tag-pill win">Winner</span>' : ''}
+        <span class="board-name">${esc(m.username)}${won ? ` <span class="tag-pill win">${t('Winner')}</span>` : ''}
           ${here ? `<small class="muted">${here}</small>` : ''}</span>
         <span class="board-pts">${num(pts)}${u === rows[0].u ? goal : ''}</span></li>`;
     }).join('')}</ol>${pendingLine(y)}`;
@@ -180,19 +181,19 @@ export const yardScreen: Screen = (root, app, [id]) => {
   /** The notice board: notes from the flock and what happened in the yard, newest first. */
   function paintNotes(y: Yard, now: number): void {
     // Names follow the yard, so a renamed chicken reads right in old lines too.
-    const name = (u: string | undefined, saved: string | undefined) => esc((u && y.members[u]?.username) || saved || 'A chicken');
+    const name = (u: string | undefined, saved: string | undefined) => esc((u && y.members[u]?.username) || saved || t('A chicken'));
     const today = new Date(now).toDateString();
     const when = (t: number) => (new Date(t).toDateString() === today ? clock(t) : dateTime(t));
     const line = (e: BoardEntry): string => {
       const who = `<strong>${name(e.uid, e.username)}</strong>`;
       if (e.kind === 'chat') return `${who}: ${esc(e.text ?? '')}`;
-      if (e.kind === 'visit') return `${who} was here.`;
-      if (e.kind === 'ate') return `${who} finished a meal of ${num(e.amount ?? 0)} feed.`;
-      return `${who} caught <strong>${name(e.victimUid, e.victimName)}</strong> eating and took ${num(e.taken ?? 0)} of their ${num(e.lost ?? 0)} feed.`;
+      if (e.kind === 'visit') return t('{0} was here.', who);
+      if (e.kind === 'ate') return t('{0} finished a meal of {1} feed.', who, num(e.amount ?? 0));
+      return t('{0} caught {1} eating and took {2} of their {3} feed.', who, `<strong>${name(e.victimUid, e.victimName)}</strong>`, num(e.taken ?? 0), num(e.lost ?? 0));
     };
     const html = entries.length
       ? entries.map((e) => `<li class="note ${e.kind}"><time>${esc(when(e.at))}</time><span>${line(e)}</span></li>`).join('')
-      : '<li class="muted">Nothing yet. Notes and yard news show up here.</li>';
+      : `<li class="muted">${t('Nothing yet. Notes and yard news show up here.')}</li>`;
     if (html === lastNotes) return;
     lastNotes = html;
     notes.innerHTML = html;
@@ -210,22 +211,25 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
     if (y.status === 'finished') {
       const mine = y.members[uid].points;
-      const names = y.winnerUids.map((u) => (u === uid ? 'You' : y.members[u].username));
-      const headline = !names.length ? 'Nobody ate. No winner.'
-        : `${names.join(' & ')} ${names.length === 1 && names[0] !== 'You' ? 'wins' : 'win'} the yard`;
-      set('finished', `<h2>${esc(headline)}</h2><p class="muted">You finished with ${num(mine)} points. ${MODE_BLURBS[y.mode]}</p>
-        ${countsForRecords(y) ? '' : '<p class="muted small">Nobody else joined, so this yard does not count towards your record.</p>'}
-        <a class="btn" href="#/">Back to your yards</a>`);
+      const iWon = y.winnerUids.includes(uid);
+      const names = y.winnerUids.map((u) => (u === uid ? t('You') : y.members[u].username)).join(' & ');
+      const headline = !y.winnerUids.length ? t('Nobody ate. No winner.')
+        : y.winnerUids.length > 1 ? t('{0} win the yard', names)
+        : iWon ? t('You win the yard') : t('{0} wins the yard', names);
+      set(`finished:${headline}`, `<h2>${esc(headline)}</h2><p class="muted">${t('You finished with {0} points.', num(mine))} ${t(MODE_BLURBS[y.mode])}</p>
+        ${countsForRecords(y) ? '' : `<p class="muted small">${t('Nobody else joined, so this yard does not count towards your record.')}</p>`}
+        <a class="btn" href="#/">${t('Back to your yards')}</a>`);
       return;
     }
 
     if (y.status === 'waiting') {
-      const names = (y.invitedUids ?? []).map((u) => y.invitedNames?.[u] ?? 'A chicken');
+      const names = (y.invitedUids ?? []).map((u) => y.invitedNames?.[u] ?? t('A chicken'));
       const mine = y.ownerUid === uid;
-      set(`waiting:${names.join(',')}:${mine}`, `<h2>Waiting for the flock</h2>
-        <p>${esc(names.join(', '))} still ${names.length === 1 ? 'has' : 'have'} to answer. Nobody can eat until then.</p>
-        ${mine ? '<button class="btn" id="start-now" type="button">Start without them</button>'
-          : '<p class="muted small">The chicken who opened the yard can also start it early.</p>'}`, () => {
+      const list = esc(names.join(', '));
+      set(`waiting:${names.join(',')}:${mine}`, `<h2>${t('Waiting for the flock')}</h2>
+        <p>${names.length === 1 ? t('{0} still has to answer. Nobody can eat until then.', list) : t('{0} still have to answer. Nobody can eat until then.', list)}</p>
+        ${mine ? `<button class="btn" id="start-now" type="button">${t('Start without them')}</button>`
+          : `<p class="muted small">${t('The chicken who opened the yard can also start it early.')}</p>`}`, () => {
         const b = panel.querySelector<HTMLButtonElement>('#start-now');
         if (b) b.onclick = () => void busy(b, () => startYardNow(id, uid));
       });
@@ -234,55 +238,56 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
     if (y.eating?.uid === uid) {
       const note = y.hardcore
-        ? 'Hardcore: keep this screen on. Leaving the app stops the meal and keeps what you ate.'
-        : 'You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.';
-      set('eating', `<p class="big"><span id="meal-pts"></span> <small>this meal</small></p>
+        ? t('Hardcore: keep this screen on. Leaving the app stops the meal and keeps what you ate.')
+        : t('You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.');
+      set('eating', `<p class="big"><span id="meal-pts"></span> <small>${t('this meal')}</small></p>
         <p class="muted" id="meal-left"></p>
-        <button class="btn primary" id="stop" type="button">${y.hardcore ? 'Stop feeding' : 'Stop and keep it'}</button>
+        <button class="btn primary" id="stop" type="button">${y.hardcore ? t('Stop feeding') : t('Stop and keep it')}</button>
         <p class="muted small">${note}</p>`, () => {
         const b = panel.querySelector<HTMLButtonElement>('#stop')!;
         b.onclick = () => void busy(b, async () => {
           const before = yard?.members[uid].points ?? 0;
           const r = await stopEating(id, uid);
-          toast(`Banked ${num(r.yard.members[uid].points - before)} points.`, 'good');
+          toast(t('Banked {0} points.', num(r.yard.members[uid].points - before)), 'good');
         });
       });
       text('#meal-pts', `+${num(mealPoints(y, now))}`);
-      text('#meal-left', y.eating.endsAt ? `Done at ${clock(y.eating.endsAt)} · ${span(y.eating.endsAt - now)} left` : 'Eating until you stop.');
+      text('#meal-left', y.eating.endsAt ? t('Done at {0} · {1} left', clock(y.eating.endsAt), span(y.eating.endsAt - now)) : t('Eating until you stop.'));
       return;
     }
 
     if (isAsleep(y.sleep, now)) {
       const wakeAt = nextWake(y.sleep, now)!;
-      set('asleep', '<h2>The chickens are asleep</h2><p class="muted" id="wake"></p>');
-      text('#wake', `Nobody can eat until ${clock(wakeAt)} (${span(wakeAt - now)}).`);
+      set('asleep', `<h2>${t('The chickens are asleep')}</h2><p class="muted" id="wake"></p>`);
+      text('#wake', t('Nobody can eat until {0} ({1}).', clock(wakeAt), span(wakeAt - now)));
       return;
     }
 
-    const why = entered ? whyCannotEat(y, uid, now) : 'Walking in…';
+    const why = entered ? whyCannotEat(y, uid, now) : 'Walking in…'; // translated below
     if (why) {
       const watchers = othersPresent(y, uid, now).map((u) => y.members[u].username);
-      const msg = watchers.length
-        ? `${watchers.join(' and ')} ${watchers.length === 1 ? 'is' : 'are'} in the yard. Nobody eats while another chicken is watching.`
-        : why;
-      set(`blocked:${msg}`, `<h2>${watchers.length ? 'Standoff' : 'Hold on'}</h2><p>${esc(msg)}</p>
-        ${watchers.length ? '<p class="muted small">Wait them out, or leave and come back later.</p>' : ''}`);
+      const who = watchers.join(` ${t('and')} `);
+      const msg = !watchers.length ? t(why)
+        : watchers.length === 1 ? t('{0} is in the yard. Nobody eats while another chicken is watching.', who)
+        : t('{0} are in the yard. Nobody eats while another chicken is watching.', who);
+      set(`blocked:${msg}`, `<h2>${watchers.length ? t('Standoff') : t('Hold on')}</h2><p>${esc(msg)}</p>
+        ${watchers.length ? `<p class="muted small">${t('Wait them out, or leave and come back later.')}</p>` : ''}`);
       return;
     }
 
     if (y.hardcore) {
-      set('ready:hardcore', `<h2>The yard is yours</h2>
-        <button class="btn primary" id="start" type="button">Start feeding</button>
-        <p class="muted small">Hardcore: no timer. Your chicken eats only while this screen stays on.</p>`, () => {
+      set('ready:hardcore', `<h2>${t('The yard is yours')}</h2>
+        <button class="btn primary" id="start" type="button">${t('Start feeding')}</button>
+        <p class="muted small">${t('Hardcore: no timer. Your chicken eats only while this screen stays on.')}</p>`, () => {
         const b = panel.querySelector<HTMLButtonElement>('#start')!;
         b.onclick = () => void busy(b, async () => { await startEating(id, uid, 0); });
       });
       return;
     }
 
-    set('ready', `<h2>The yard is yours</h2>
+    set('ready', `<h2>${t('The yard is yours')}</h2>
       <div class="chips" id="timers">${TIMERS.map(([t, s]) => `<button type="button" class="chip" data-s="${s}">${t}</button>`).join('')}</div>
-      <label class="inline">or <input id="custom-min" type="number" min="1" step="1" inputmode="numeric" placeholder="minutes" aria-label="Custom meal length in minutes"> minutes</label>
+      <label class="inline">${t('or')} <input id="custom-min" type="number" min="1" step="1" inputmode="numeric" placeholder="${t('minutes')}" aria-label="${t('Custom meal length in minutes')}"> ${t('minutes')}</label>
       <button class="btn primary" id="start" type="button"></button>
       <p class="muted small" id="max-meal"></p>`, () => {
       const custom = panel.querySelector<HTMLInputElement>('#custom-min')!;
@@ -307,8 +312,8 @@ export const yardScreen: Screen = (root, app, [id]) => {
     });
     const max = maxMealSeconds(y, uid, now);
     const length = Math.max(MIN_MEAL_S, Math.min(seconds, max));
-    text('#start', `Start eating for ${span(length * 1000)}`);
-    text('#max-meal', max < seconds ? `Longest meal possible right now: ${span(max * 1000)}.` : 'Pick how long to eat. You can come back and stop early.');
+    text('#start', t('Start eating for {0}', span(length * 1000)));
+    text('#max-meal', max < seconds ? t('Longest meal possible right now: {0}.', span(max * 1000)) : t('Pick how long to eat. You can come back and stop early.'));
   }
 
   function paint(): void {
@@ -327,7 +332,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   const stopWatching = watchYard(id, (next) => {
     if (!alive) return;
     if (!next) {
-      root.innerHTML = '<section class="card"><h1>Yard not found</h1><a class="btn" href="#/">Back</a></section>';
+      root.innerHTML = `<section class="card"><h1>${t('Yard not found')}</h1><a class="btn" href="#/">${t('Back')}</a></section>`;
       return;
     }
     if (!next.members[uid]) { app.go(`#/join/${next.joinCode}`); return; }
@@ -338,7 +343,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       stopBoard = watchBoard(id, (list) => { entries = list; paint(); });
     }
     if (prev && next.members[uid].mealsLost > prev.members[uid].mealsLost) {
-      toast('Caught! Another chicken walked in and your meal is gone.', 'bad');
+      toast(t('Caught! Another chicken walked in and your meal is gone.'), 'bad');
     }
     if (!entered) {
       // First sight of the yard: walk in (this is what interrupts an eater).

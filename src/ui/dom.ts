@@ -1,4 +1,5 @@
 // Small helpers shared by the screens.
+import { t } from '../i18n';
 
 export function esc(s: unknown): string {
   return String(s).replace(/[&<>"']/g, (c) => (
@@ -55,7 +56,7 @@ export async function busy(button: HTMLButtonElement | null, fn: () => Promise<v
   try {
     await fn();
   } catch (e) {
-    toast(e instanceof Error ? e.message : String(e), 'bad');
+    toast(t(e instanceof Error ? e.message : String(e)), 'bad'); // rule messages are written in English
   } finally {
     if (button) button.disabled = false;
   }

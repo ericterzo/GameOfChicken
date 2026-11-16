@@ -10,6 +10,7 @@ import {
   runTransaction, updateDoc, where, writeBatch, type Transaction,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { t } from './i18n';
 import * as rules from './game/rules';
 import type { Look, NewYard, Result, Yard } from './game/rules';
 
@@ -30,6 +31,26 @@ export interface Profile {
   lookEverywhere: boolean;
   friends: string[];
   stats: Stats;
+  /** Accessories earned by playing in another language: 'eyepatch', 'hand'. */
+  unlocked: string[];
+}
+
+export interface Unlocks { eyepatch: boolean; hand: boolean; crown: boolean; bigCrown: boolean }
+
+export const BIG_CROWN_WINS = 10;
+
+/** Which accessories this player may put on a chicken. */
+export function unlockedFor(p: Profile): Unlocks {
+  return {
+    eyepatch: p.unlocked.includes('eyepatch'),
+    hand: p.unlocked.includes('hand'),
+    crown: p.stats.wins >= 1,
+    bigCrown: p.stats.wins >= BIG_CROWN_WINS,
+  };
+}
+
+export async function unlockGift(uid: string, gift: 'eyepatch' | 'hand'): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { unlocked: arrayUnion(gift) });
 }
 
 export interface InboxMessage {
@@ -67,13 +88,13 @@ export class ApiError extends Error {}
 
 function friendly(e: unknown): Error {
   const code = (e as { code?: string })?.code ?? '';
-  if (code === 'auth/email-already-in-use') return new ApiError('That username is taken.');
+  if (code === 'auth/email-already-in-use') return new ApiError(t('That username is taken.'));
   if (['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-login-credentials'].includes(code)) {
-    return new ApiError('Wrong username or password.');
+    return new ApiError(t('Wrong username or password.'));
   }
-  if (code === 'auth/weak-password') return new ApiError('Use a password of at least 6 characters.');
-  if (code === 'auth/network-request-failed' || code === 'unavailable') return new ApiError('Cannot reach the server. Check your connection.');
-  if (code === 'permission-denied') return new ApiError('The server refused that move.');
+  if (code === 'auth/weak-password') return new ApiError(t('Use a password of at least 6 characters.'));
+  if (code === 'auth/network-request-failed' || code === 'unavailable') return new ApiError(t('Cannot reach the server. Check your connection.'));
+  if (code === 'permission-denied') return new ApiError(t('The server refused that move.'));
   return e instanceof Error ? e : new Error(String(e));
 }
 
@@ -82,13 +103,13 @@ function friendly(e: unknown): Error {
 export async function signUp(username: string, password: string): Promise<void> {
   username = username.trim();
   if (!USERNAME_RE.test(username)) {
-    throw new ApiError('Usernames are 3–16 letters, numbers or underscores.');
+    throw new ApiError(t('Usernames are 3–16 letters, numbers or underscores.'));
   }
   signingUp = true;
   try {
     // Google players can hold a username too, so check the shared register first.
     if ((await getDoc(doc(db, 'usernames', username.toLowerCase()))).exists()) {
-      throw new ApiError('That username is taken.');
+      throw new ApiError(t('That username is taken.'));
     }
     const login = newLoginId();
     const cred = await createUserWithEmailAndPassword(auth, emailFor(login), password);
@@ -120,8 +141,8 @@ export async function signInWithGoogle(): Promise<void> {
   } catch (e) {
     const code = (e as { code?: string })?.code ?? '';
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
-    if (code === 'auth/popup-blocked') throw new ApiError('Your browser blocked the Google window. Allow pop-ups and try again.');
-    if (code === 'auth/operation-not-allowed') throw new ApiError('Google sign-in is not switched on for this game yet.');
+    if (code === 'auth/popup-blocked') throw new ApiError(t('Your browser blocked the Google window. Allow pop-ups and try again.'));
+    if (code === 'auth/operation-not-allowed') throw new ApiError(t('Google sign-in is not switched on for this game yet.'));
     throw friendly(e);
   }
 }
@@ -130,15 +151,15 @@ export async function signInWithGoogle(): Promise<void> {
 export async function claimUsername(uid: string, username: string): Promise<void> {
   username = username.trim();
   if (!USERNAME_RE.test(username)) {
-    throw new ApiError('Usernames are 3–16 letters, numbers or underscores.');
+    throw new ApiError(t('Usernames are 3–16 letters, numbers or underscores.'));
   }
   try {
     if ((await getDoc(doc(db, 'usernames', username.toLowerCase()))).exists()) {
-      throw new ApiError('That username is taken.');
+      throw new ApiError(t('That username is taken.'));
     }
     await writeProfile(uid, username);
   } catch (e) {
-    if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError('That username is taken.');
+    if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError(t('That username is taken.'));
     throw friendly(e);
   }
 }
@@ -146,9 +167,9 @@ export async function claimUsername(uid: string, username: string): Promise<void
 export async function signIn(username: string, password: string): Promise<void> {
   try {
     const key = username.trim().toLowerCase();
-    if (!key) throw new ApiError('Type your username.');
+    if (!key) throw new ApiError(t('Type your username.'));
     const entry = await getDoc(doc(db, 'usernames', key));
-    if (!entry.exists()) throw new ApiError('Wrong username or password.');
+    if (!entry.exists()) throw new ApiError(t('Wrong username or password.'));
     await signInWithEmailAndPassword(auth, emailFor((entry.data().login as string | undefined) ?? key), password);
   } catch (e) {
     throw friendly(e);
@@ -169,6 +190,7 @@ function toProfile(uid: string, data: Record<string, unknown>): Profile {
     lookEverywhere: !!data.lookEverywhere,
     friends: (data.friends as string[]) ?? [],
     stats: { ...EMPTY_STATS, ...(data.stats as Stats) },
+    unlocked: (data.unlocked as string[]) ?? [],
   };
 }
 
@@ -211,14 +233,14 @@ async function renameInYards(uid: string, username: string): Promise<void> {
 
 export async function renameUser(me: Profile, wanted: string): Promise<void> {
   const username = wanted.trim();
-  if (!USERNAME_RE.test(username)) throw new ApiError('Usernames are 3–16 letters, numbers or underscores.');
+  if (!USERNAME_RE.test(username)) throw new ApiError(t('Usernames are 3–16 letters, numbers or underscores.'));
   if (username === me.username) return;
   const oldKey = me.username.toLowerCase();
   const newKey = username.toLowerCase();
   try {
     const batch = writeBatch(db);
     if (newKey !== oldKey) {
-      if ((await getDoc(doc(db, 'usernames', newKey))).exists()) throw new ApiError('That username is taken.');
+      if ((await getDoc(doc(db, 'usernames', newKey))).exists()) throw new ApiError(t('That username is taken.'));
       // Carry the login id across so the password keeps working under the new name.
       const old = await getDoc(doc(db, 'usernames', oldKey));
       const login = (old.data()?.login as string | undefined) ?? (hasPassword() ? oldKey : undefined);
@@ -228,7 +250,7 @@ export async function renameUser(me: Profile, wanted: string): Promise<void> {
     batch.update(doc(db, 'users', me.uid), { username });
     await batch.commit();
   } catch (e) {
-    if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError('That username is taken.');
+    if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError(t('That username is taken.'));
     throw friendly(e);
   }
   await renameInYards(me.uid, username);
@@ -242,20 +264,20 @@ export async function renameUser(me: Profile, wanted: string): Promise<void> {
  */
 export async function deleteAccount(me: Profile, password: string): Promise<void> {
   const user = auth.currentUser;
-  if (!user) throw new ApiError('You are not signed in.');
+  if (!user) throw new ApiError(t('You are not signed in.'));
   try {
     // Firebase only deletes an account that has just proved who it is.
     if (hasPassword()) {
-      if (!password) throw new ApiError('Type your password to confirm.');
+      if (!password) throw new ApiError(t('Type your password to confirm.'));
       await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email!, password));
     } else {
       await reauthenticateWithPopup(user, new GoogleAuthProvider());
     }
   } catch (e) {
     const code = (e as { code?: string })?.code ?? '';
-    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') throw new ApiError('Deletion cancelled.');
-    if (code === 'auth/user-mismatch') throw new ApiError('That is a different Google account.');
-    if (code.startsWith('auth/') && hasPassword()) throw new ApiError('Wrong password.');
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') throw new ApiError(t('Deletion cancelled.'));
+    if (code === 'auth/user-mismatch') throw new ApiError(t('That is a different Google account.'));
+    if (code.startsWith('auth/') && hasPassword()) throw new ApiError(t('Wrong password.'));
     throw friendly(e);
   }
   signingUp = true; // keeps the app on its loading screen while the pieces are removed
@@ -279,12 +301,12 @@ export async function deleteAccount(me: Profile, password: string): Promise<void
 
 export async function addFriend(me: Profile, username: string): Promise<void> {
   const name = username.trim().toLowerCase();
-  if (!name) throw new ApiError('Type a username.');
+  if (!name) throw new ApiError(t('Type a username.'));
   const snap = await getDoc(doc(db, 'usernames', name));
-  if (!snap.exists()) throw new ApiError(`No chicken is called "${username.trim()}".`);
+  if (!snap.exists()) throw new ApiError(t('No chicken is called “{0}”.', username.trim()));
   const uid = snap.data().uid as string;
-  if (uid === me.uid) throw new ApiError('That is you.');
-  if (me.friends.includes(uid)) throw new ApiError('Already in your flock.');
+  if (uid === me.uid) throw new ApiError(t('That is you.'));
+  if (me.friends.includes(uid)) throw new ApiError(t('Already in your flock.'));
   await updateDoc(doc(db, 'users', me.uid), { friends: arrayUnion(uid) });
 }
 
@@ -340,7 +362,7 @@ export async function joinYard(me: Profile, yardId: string, look: Look): Promise
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(yardRef(yardId));
-      if (!snap.exists()) throw new ApiError('That yard no longer exists.');
+      if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
       const before = snap.data() as Yard;
       const now = Date.now();
       const after = rules.join(before, me.uid, me.username, look, now);
@@ -455,7 +477,7 @@ async function change(yardId: string, fn: (y: Yard, now: number) => Yard): Promi
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(yardRef(yardId));
-      if (!snap.exists()) throw new ApiError('That yard no longer exists.');
+      if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
       const before = snap.data() as Yard;
       const now = Date.now();
       const after = fn(before, now);
@@ -478,7 +500,7 @@ async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Re
   try {
     return await runTransaction(db, async (tx) => {
       const snap = await tx.get(yardRef(yardId));
-      if (!snap.exists()) throw new ApiError('That yard no longer exists.');
+      if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
       const before = snap.data() as Yard;
       const now = Date.now();
       const result = fn(before, now);

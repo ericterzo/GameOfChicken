@@ -1,6 +1,6 @@
 import './style.css';
 import type { App, Screen } from './app';
-import { isSigningUp, onUser, signOut, watchProfile, type Profile } from './api';
+import { isSigningUp, onUser, signOut, unlockGift, watchProfile, type Profile } from './api';
 import { configMissing } from './firebase';
 import { authScreen, usernameScreen } from './screens/auth';
 import { helpScreen } from './screens/help';
@@ -8,7 +8,8 @@ import { homeScreen } from './screens/home';
 import { chickenScreen, flockScreen, leaderboardScreen } from './screens/profile';
 import { joinScreen, newYardScreen } from './screens/setup';
 import { yardScreen } from './screens/yard';
-import { esc } from './ui/dom';
+import { getLang, LANG_GIFT, langMenu, onLang, t, wireLangMenu } from './i18n';
+import { esc, toast } from './ui/dom';
 
 const root = document.getElementById('app')!;
 let uid: string | null | undefined; // undefined = still finding out
@@ -39,28 +40,36 @@ function route(): void {
       <p>This build has no Firebase settings. Follow “Going online” in README.md, then build again.</p></section>`;
     return;
   }
+  document.documentElement.lang = getLang() === 'it' ? 'it' : 'en';
+  /** Screens shown before the game proper still get the language menu, top right. */
+  const bare = (): HTMLElement => {
+    root.innerHTML = `<header class="top bare">${langMenu()}</header><div></div>`;
+    wireLangMenu(root);
+    return root.lastElementChild as HTMLElement;
+  };
   // Signed in but no profile: a first Google sign-in still needs a username.
-  if (uid && !profile && profileLoaded && !isSigningUp()) { usernameScreen(root, uid); return; }
+  if (uid && !profile && profileLoaded && !isSigningUp()) { usernameScreen(bare(), uid); return; }
   if (uid === undefined || (uid && !profile)) {
-    root.innerHTML = '<p class="loading">Opening the coop…</p>';
+    root.innerHTML = `<p class="loading">${t('Opening the coop…')}</p>`;
     return;
   }
   const [name = '', ...params] = location.hash.replace(/^#\/?/, '').split('/');
   // The rules can be read before signing in.
-  if (!uid && name === 'help') { helpScreen(root); return; }
-  if (!uid) { authScreen(root); return; }
+  if (!uid && name === 'help') { helpScreen(bare()); return; }
+  if (!uid) { authScreen(bare()); return; }
 
   const screen = ROUTES[name] ?? homeScreen;
   const tab = (key: string, label: string) =>
     `<a href="#/${key}" class="${name === key ? 'on' : ''}">${label}</a>`;
   root.innerHTML = `
     <header class="top">
-      <a class="brand" href="#/"><img src="/icons/icon.svg" alt="" width="32" height="32">The Game of Chicken</a>
-      <a class="help-link${name === 'help' ? ' on' : ''}" href="#/help">How to play</a>
-      <nav>${tab('', 'Yards')}${tab('chicken', 'My chicken')}${tab('flock', 'Flock')}${tab('leaderboard', 'Leaderboard')}</nav>
+      <a class="brand" href="#/"><img src="/icons/icon.svg" alt="" width="32" height="32">${t('The Game of Chicken')}</a>
+      ${langMenu()}
+      <nav>${tab('', t('Yards'))}${tab('chicken', t('My chicken'))}${tab('flock', t('Flock'))}${tab('leaderboard', t('Leaderboard'))}${tab('help', t('How to play'))}</nav>
     </header>
     <main></main>
-    <footer class="foot">Signed in as <strong>${esc(profile!.username)}</strong> · <button class="link" id="sign-out" type="button">Sign out</button></footer>`;
+    <footer class="foot">${t('Signed in as {0}', `<strong>${esc(profile!.username)}</strong>`)} · <button class="link" id="sign-out" type="button">${t('Sign out')}</button></footer>`;
+  wireLangMenu(root);
   root.querySelector<HTMLButtonElement>('#sign-out')!.onclick = () => void signOut();
   cleanup = screen(root.querySelector('main')!, app, params);
 }
@@ -77,6 +86,7 @@ onUser((next) => {
       profile = p;
       profileLoaded = true;
       if (!p) { route(); return; } // no profile yet: being created, or needs a username
+      claimGift(p);
       if (first) route();
       else {
         const shown = root.querySelector('.foot strong');
@@ -86,6 +96,21 @@ onUser((next) => {
     });
   }
   route();
+});
+
+/** Playing in Pirate or Italian hands out that language's accessory, once and for good. */
+function claimGift(p: Profile): void {
+  const gift = LANG_GIFT[getLang()];
+  if (!gift || p.unlocked.includes(gift)) return;
+  p.unlocked.push(gift); // so the next snapshot does not ask twice
+  void unlockGift(p.uid, gift).then(() => toast(
+    gift === 'eyepatch' ? t('Unlocked: an eyepatch! Find it under My chicken.') : t('Unlocked: the hand! Find it under My chicken.'), 'good',
+  )).catch(() => {});
+}
+
+onLang(() => {
+  route();
+  if (profile) claimGift(profile);
 });
 
 window.addEventListener('hashchange', route);

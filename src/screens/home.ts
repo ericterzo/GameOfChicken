@@ -5,6 +5,7 @@ import {
 } from '../api';
 import { countsForRecords, MODE_NAMES, settle } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
+import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
 import { sceneClock, yardScene } from '../ui/yardScene';
 
@@ -22,22 +23,22 @@ export const homeScreen: Screen = (root, app) => {
       <p class="cosy-caption"></p>
     </section>
     <section class="actions">
-      <a class="btn primary" href="#/new">Start a chicken yard</a>
+      <a class="btn primary" href="#/new">${t('Start a chicken yard')}</a>
       <form id="join-form" class="join">
-        <input name="code" placeholder="Yard code" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Yard code">
-        <button class="btn" type="submit">Join</button>
+        <input name="code" placeholder="${t('Yard code')}" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="${t('Yard code')}">
+        <button class="btn" type="submit">${t('Join')}</button>
       </form>
     </section>
     <section>
-      <h2>Your yards</h2>
-      <div id="yards"><p class="muted">Looking for your yards…</p></div>
+      <h2>${t('Your yards')}</h2>
+      <div id="yards"><p class="muted">${t('Looking for your yards…')}</p></div>
     </section>
     ${installHelp()}
     <section class="credits">
-      <img src="/credits/verdant-outpost-games.webp" alt="Verdant Outpost Games logo" width="96" height="96" loading="lazy">
+      <img src="/credits/verdant-outpost-games.webp" alt="Verdant Outpost Games" width="96" height="96" loading="lazy">
       <dl>
-        <div><dt>Creator</dt><dd>Eric Serra</dd></div>
-        <div><dt>Game studio</dt><dd>Verdant Outpost Games</dd></div>
+        <div><dt>${t('Creator')}</dt><dd>Eric Serra</dd></div>
+        <div><dt>${t('Game studio')}</dt><dd>Verdant Outpost Games</dd></div>
       </dl>
     </section>`;
 
@@ -51,15 +52,15 @@ export const homeScreen: Screen = (root, app) => {
   const paintInvites = () => {
     if (!invites.length) { invitesBox.innerHTML = ''; return; }
     invitesBox.innerHTML = `<section class="card invites">
-      <h2>You are invited</h2>
+      <h2>${t('You are invited')}</h2>
       ${invites.map((y) => `<div class="invite">
-        <p><strong>${esc(y.members[y.ownerUid]?.username ?? 'A friend')}</strong> invited you to <strong>${esc(y.name)}</strong>
-          <span class="tag-pill">${MODE_NAMES[y.mode]}</span>${y.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}<br>
+        <p>${t('<strong>{0}</strong> invited you to <strong>{1}</strong>', esc(y.members[y.ownerUid]?.username ?? t('A friend')), esc(y.name))}
+          <span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}<br>
           <span class="muted small">${y.status === 'waiting'
-            ? `Starts when everyone has answered, then runs for ${span(y.endsAt - y.createdAt)}.`
-            : `Already running. Closes in ${span(y.endsAt - Date.now())}.`}</span></p>
-        <div class="row"><button class="btn" type="button" data-accept="${y.id}">Accept</button>
-          <button class="btn quiet" type="button" data-decline="${y.id}">Decline</button></div>
+            ? t('Starts when everyone has answered, then runs for {0}.', span(y.endsAt - y.createdAt))
+            : t('Already running. Closes in {0}.', span(y.endsAt - Date.now()))}</span></p>
+        <div class="row"><button class="btn" type="button" data-accept="${y.id}">${t('Accept')}</button>
+          <button class="btn quiet" type="button" data-decline="${y.id}">${t('Decline')}</button></div>
       </div>`).join('')}
     </section>`;
   };
@@ -74,7 +75,7 @@ export const homeScreen: Screen = (root, app) => {
       // With a personal chicken set for every yard there is nothing to choose: join right here.
       if (!app.profile.lookEverywhere) { app.go(`#/join/${y.joinCode}`); return; }
       await joinYard(app.profile, y.id, app.profile.look);
-      toast(`You joined ${y.name}.`, 'good');
+      toast(t('You joined {0}.', y.name), 'good');
     });
   });
 
@@ -92,16 +93,15 @@ export const homeScreen: Screen = (root, app) => {
       cosy.style.setProperty('--scene-t', sceneClock(now));
       cosy.innerHTML = html;
     }
-    caption.textContent = `${p.username} is safe here. The real yards are below.`;
+    caption.textContent = t('{0} is safe here. The real yards are below.', p.username);
   };
 
   const paintInbox = (msgs: InboxMessage[]) => {
     if (!msgs.length) { inbox.innerHTML = ''; return; }
     inbox.innerHTML = `<section class="card alert">
-      <h2>While you were away</h2>
-      <ul>${msgs.map((m) => `<li><strong>${esc(m.byUsername)}</strong> caught your chicken eating in
-        <strong>${esc(m.yardName)}</strong>. You lost that meal: ${num(m.pointsLost)} points.</li>`).join('')}</ul>
-      <button class="btn" id="inbox-ok" type="button">Got it</button>
+      <h2>${t('While you were away')}</h2>
+      <ul>${msgs.map((m) => `<li>${t('<strong>{0}</strong> caught your chicken eating in <strong>{1}</strong>. You lost that meal: {2} points.', esc(m.byUsername), esc(m.yardName), num(m.pointsLost))}</li>`).join('')}</ul>
+      <button class="btn" id="inbox-ok" type="button">${t('Got it')}</button>
     </section>`;
     const ok = inbox.querySelector<HTMLButtonElement>('#inbox-ok')!;
     ok.onclick = () => void busy(ok, () => markRead(uid, msgs.map((m) => m.id)));
@@ -129,34 +129,34 @@ export const homeScreen: Screen = (root, app) => {
     const open = view.filter((v) => v.y.status !== 'finished').sort((a, b) => a.y.endsAt - b.y.endsAt);
     const closed = view.filter((v) => v.y.status === 'finished').sort((a, b) => b.y.endsAt - a.y.endsAt).slice(0, 10);
     if (!view.length) {
-      list.innerHTML = '<p class="muted">You are not in any yard yet. Start one, or join a friend’s with their code.</p>';
+      list.innerHTML = `<p class="muted">${t('You are not in any yard yet. Start one, or join a friend’s with their code.')}</p>`;
       return;
     }
     const row = ({ id, y }: (typeof view)[number]) => {
       const mine = y.members[uid]?.points ?? 0;
-      const tags = `<span class="tag-pill">${MODE_NAMES[y.mode]}</span>${y.hardcore ? '<span class="tag-pill hot">Hardcore</span>' : ''}`;
+      const tags = `<span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}`;
       let line: string;
       if (y.status === 'waiting') {
         const left = (y.invitedUids ?? []).length;
-        line = `Not started · waiting for ${left} invited ${left === 1 ? 'chicken' : 'chickens'}`;
+        line = left === 1 ? t('Not started · waiting for 1 invited chicken') : t('Not started · waiting for {0} invited chickens', left);
       } else if (y.status === 'active') {
-        line = `Closes in ${span(y.endsAt - now)} · you have ${num(mine)}`;
+        line = t('Closes in {0} · you have {1}', span(y.endsAt - now), num(mine));
       } else if (!countsForRecords(y)) {
-        line = `Closed · solo yard, not counted · you had ${num(mine)}`;
+        line = t('Closed · solo yard, not counted · you had {0}', num(mine));
       } else if (!y.winnerUids.length) {
-        line = 'Closed · nobody ate';
+        line = t('Closed · nobody ate');
       } else {
-        const names = y.winnerUids.map((u) => (u === uid ? 'you' : y.members[u].username)).join(' & ');
-        line = `Closed · won by ${esc(names)} · you had ${num(mine)}`;
+        const names = y.winnerUids.map((u) => (u === uid ? t('you') : y.members[u].username)).join(' & ');
+        line = t('Closed · won by {0} · you had {1}', esc(names), num(mine));
       }
       return `<a class="yard-row${y.status === 'finished' ? ' closed' : ''}" href="#/yard/${id}">
         <span class="yard-name">${esc(y.name)} ${tags}</span>
         <span class="muted">${line}</span>
-        <span class="yard-go">${y.status === 'finished' ? 'View' : 'Enter'}</span></a>`;
+        <span class="yard-go">${y.status === 'finished' ? t('View') : t('Enter')}</span></a>`;
     };
     list.innerHTML =
-      (open.length ? open.map(row).join('') : '<p class="muted">No open yards right now.</p>') +
-      (closed.length ? `<h3>Closed</h3>${closed.map(row).join('')}` : '');
+      (open.length ? open.map(row).join('') : `<p class="muted">${t('No open yards right now.')}</p>`) +
+      (closed.length ? `<h3>${t('Closed')}</h3>${closed.map(row).join('')}` : '');
   };
 
   root.querySelector<HTMLFormElement>('#join-form')!.onsubmit = (e) => {

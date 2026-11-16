@@ -360,7 +360,7 @@ function chicken(c: SceneChicken, spot: [number, number]): string {
   const [dx, dy] = spot;
   const k = 0.42 + 0.72 * Math.max(0, Math.min(1, c.size));
   const flip = dx > 0 ? -1 : 1;
-  const top = -94 * k - 6;
+  const top = -(c.look.crown === 'big' ? 120 : 94) * k - 6; // the grand crown towers over the name
   return `<g transform="translate(${PX + dx} ${PY + dy})">
     <ellipse cx="0" cy="0" rx="${f1(27 * k)}" ry="${f1(4.5 * k)}" fill="#000" fill-opacity="0.16"/>
     <g transform="scale(${(flip * k).toFixed(3)} ${k.toFixed(3)}) translate(-48 -94)">

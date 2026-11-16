@@ -13,6 +13,10 @@ export interface Look {
   /** The wattle under the beak. Older chickens have none saved: classic, in the comb's colour. */
   wattle?: 'classic' | 'long' | 'double' | 'round' | 'none';
   wattleColor?: string;
+  /** Accessories, each unlocked in its own way (see unlockedFor in api.ts). */
+  eyepatch?: boolean;
+  hand?: boolean;
+  crown?: 'small' | 'big';
 }
 
 export interface Member {

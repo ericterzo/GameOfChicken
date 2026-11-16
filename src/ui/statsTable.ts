@@ -3,6 +3,7 @@
 import type { Profile, Stats } from '../api';
 import { chickenSvg } from './chicken';
 import { esc, num } from './dom';
+import { t } from '../i18n';
 
 export type StatCol = keyof Stats | 'username';
 
@@ -36,10 +37,10 @@ export function statsTable(host: HTMLElement, opts: {
     });
     host.innerHTML = `<table class="flock-table">
       <thead><tr>${opts.ranked ? '<th scope="col" class="rank">#</th>' : ''}${COLS.map(([k, label]) => `<th scope="col" ${k === sortKey ? `aria-sort="${sortDesc ? 'descending' : 'ascending'}"` : ''}>
-        <button type="button" data-sort="${k}">${label}<span aria-hidden="true">${k === sortKey ? (sortDesc ? ' ▼' : ' ▲') : ''}</span></button></th>`).join('')}</tr></thead>
+        <button type="button" data-sort="${k}">${t(label)}<span aria-hidden="true">${k === sortKey ? (sortDesc ? ' ▼' : ' ▲') : ''}</span></button></th>`).join('')}</tr></thead>
       <tbody>${sorted.map((p, i) => `<tr class="${p.uid === opts.meUid ? 'me' : ''}">
         ${opts.ranked ? `<td class="rank">${i + 1}</td>` : ''}
-        <th scope="row"><span class="cell-chicken">${chickenSvg(p.look, { px: 34 })}</span><span>${esc(p.username)}${p.uid === opts.meUid ? ' <small>(you)</small>' : ''}</span></th>
+        <th scope="row"><span class="cell-chicken">${chickenSvg(p.look, { px: 34 })}</span><span>${esc(p.username)}${p.uid === opts.meUid ? ` <small>${t('(you)')}</small>` : ''}</span></th>
         ${COLS.slice(1).map(([k]) => `<td>${num(p.stats[k as keyof Stats])}</td>`).join('')}</tr>`).join('')}</tbody>
     </table>`;
   };
