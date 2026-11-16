@@ -96,7 +96,14 @@ service cloud.firestore {
         return (after().createdAt == before().createdAt && after().endsAt == before().endsAt)
           || (before().status == 'waiting' && after().status == 'active'
               && after().endsAt - after().createdAt == before().endsAt - before().createdAt
-              && after().createdAt > nowMs() - slack() && after().createdAt < nowMs() + slack());
+              && after().createdAt > nowMs() - slack() && after().createdAt < nowMs() + slack())
+          // ...or, for a yard with a set start time, from that time once it has come
+          // (the yard may also have run its whole course before anyone looked).
+          || (before().status == 'waiting' && after().status in ['active', 'finished']
+              && before().get('startsAt', null) != null
+              && before().startsAt < nowMs() + slack()
+              && after().createdAt == before().startsAt
+              && after().endsAt - after().createdAt == before().endsAt - before().createdAt);
       }
       // An invited player who is not a member may only take themselves off the list.
       function declining() {
@@ -169,7 +176,9 @@ service cloud.firestore {
         && (!after().hardcore || after().sleep == null)
         && after().createdAt > nowMs() - slack() && after().createdAt < nowMs() + slack()
         && after().endsAt > nowMs()
-        && after().endsAt <= nowMs() + fortnight() + slack();
+        && after().endsAt <= nowMs() + fortnight() + slack()
+        && (after().get('startsAt', null) == null
+            || (after().status == 'waiting' && after().startsAt > nowMs() && after().startsAt <= nowMs() + fortnight() + slack()));
 
       allow update: if signedIn()
         && settingsUnchanged()

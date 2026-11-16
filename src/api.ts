@@ -364,6 +364,22 @@ function newCode(): string {
 
 const yardRef = (id: string) => doc(db, 'yards', id);
 
+/**
+ * A transaction on a yard. When two players' moves land at the same instant the
+ * server can judge one of them against a yard it has not seen and refuse it;
+ * the same move made again a moment later is fine, so try a few times.
+ */
+async function yardTx<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await runTransaction(db, fn);
+    } catch (e) {
+      if ((e as { code?: string })?.code !== 'permission-denied' || attempt >= 2) throw e;
+      await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+    }
+  }
+}
+
 export async function createYard(me: Profile, opts: NewYard, look: Look): Promise<string> {
   try {
     const yard = rules.createYard(opts, me.uid, me.username, look, newCode(), Date.now());
@@ -384,7 +400,7 @@ export async function findYardByCode(code: string): Promise<YardDoc | null> {
 
 export async function joinYard(me: Profile, yardId: string, look: Look): Promise<void> {
   try {
-    await runTransaction(db, async (tx) => {
+    await yardTx(async (tx) => {
       const snap = await tx.get(yardRef(yardId));
       if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
       const before = snap.data() as Yard;
@@ -499,7 +515,7 @@ export async function logVisit(yardId: string, me: Profile): Promise<void> {
 /** Apply a rule that changes the yard without anyone walking in. */
 async function change(yardId: string, fn: (y: Yard, now: number) => Yard): Promise<void> {
   try {
-    await runTransaction(db, async (tx) => {
+    await yardTx(async (tx) => {
       const snap = await tx.get(yardRef(yardId));
       if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
       const before = snap.data() as Yard;
@@ -522,7 +538,7 @@ export const startYardNow = (id: string, uid: string) => change(id, (y, now) => 
 /** Load the yard, apply one rule to it, save it, and tell any victim. */
 async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Result): Promise<Result> {
   try {
-    return await runTransaction(db, async (tx) => {
+    return await yardTx(async (tx) => {
       const snap = await tx.get(yardRef(yardId));
       if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
       const before = snap.data() as Yard;
@@ -562,19 +578,19 @@ export async function leaveYard(id: string, uid: string): Promise<void> {
 }
 
 /**
- * Close a yard whose end has passed without disturbing anyone (used from the
+ * Start a yard whose start time has come, or close one whose end has passed, without disturbing anyone (used from the
  * home screen, where looking at the list must not count as entering).
  */
 export async function finalizeYard(id: string): Promise<void> {
   try {
-    await runTransaction(db, async (tx) => {
+    await yardTx(async (tx) => {
       const snap = await tx.get(yardRef(id));
       if (!snap.exists()) return;
       const before = snap.data() as Yard;
       if (before.status === 'finished') return;
       const now = Date.now();
       const after = rules.settle(before, now);
-      if (after.status !== 'finished') return;
+      if (after.status === before.status) return; // nothing has begun or ended
       tx.set(yardRef(id), after);
       const by = auth.currentUser?.uid;
       if (by && after.members[by]) logMeals(tx, id, by, before, after, now);
@@ -597,7 +613,7 @@ export function hasUnclaimed(yard: Yard): boolean {
  */
 export async function claimStats(yardId: string): Promise<void> {
   try {
-    await runTransaction(db, async (tx) => {
+    await yardTx(async (tx) => {
       const ySnap = await tx.get(yardRef(yardId));
       if (!ySnap.exists()) return;
       const yard = ySnap.data() as Yard;

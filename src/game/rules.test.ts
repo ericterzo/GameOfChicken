@@ -449,3 +449,35 @@ describe('records', () => {
     expect(liveTallies([solo], s(10))).toEqual({ a: expect.objectContaining({ gamesPlayed: 0 }) });
   });
 });
+
+describe('a set start time', () => {
+  const later = () => createYard(
+    { name: 'Later', mode: 'sundown', goal: null, endsAt: s(2 * HOUR), hardcore: false, sleep: null, startsAt: s(HOUR), invites: [{ uid: 'c', username: 'Carl' }], waitForInvites: true },
+    'a', 'Anna', look, 'LATER1', T0,
+  );
+
+  it('waits until the start, then runs for its full length', () => {
+    let y = later();
+    expect(y.status).toBe('waiting');
+    y = join(y, 'b', 'Ben', look, s(600));
+    expect(touch(y, 'a', s(700)).yard.status).toBe('waiting');
+    expect(whyCannotEat(y, 'a', s(700))).toBe('The game has not started yet.');
+    expect(() => startEating(y, 'a', s(700), 60)).toThrow(RuleError);
+    // Invited chickens answering does not start it early.
+    expect(declineInvite(y, 'c', s(800)).status).toBe('waiting');
+    // The first to look after the start finds it running since the start, not since they looked.
+    const started = settle(y, s(HOUR + 300));
+    expect(started.status).toBe('active');
+    expect(started.createdAt).toBe(s(HOUR));
+    expect(started.endsAt).toBe(s(3 * HOUR));
+    expect(startEating(y, 'a', s(HOUR + 300), 60).yard.eating?.uid).toBe('a');
+  });
+
+  it('can be started early by its owner, is over if nobody looked in time, and needs a sensible start', () => {
+    expect(startNow(later(), 'a', s(60)).status).toBe('active');
+    expect(settle(later(), s(4 * HOUR)).status).toBe('finished');
+    const opts = { name: 'X', mode: 'sundown' as const, goal: null, endsAt: s(HOUR), hardcore: false, sleep: null };
+    expect(() => createYard({ ...opts, startsAt: s(10) }, 'a', 'Anna', look, 'ABC123', T0)).toThrow(RuleError);
+    expect(() => createYard({ ...opts, startsAt: s(15 * 24 * HOUR) }, 'a', 'Anna', look, 'ABC123', T0)).toThrow(RuleError);
+  });
+});

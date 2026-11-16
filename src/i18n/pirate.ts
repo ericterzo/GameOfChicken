@@ -39,6 +39,7 @@ export const pirate: Record<string, string> = {
     'Any soul can open a yard and choose the game, how long she stays open (up to a fortnight) and the extra articles.',
   'Asleep from': 'Hammocks from',
   'At most a fortnight from now.': 'A fortnight hence at most.',
+  'At {0}. Then the yard runs for {1}.': 'At {0}. Then the yard sails fer {1}.',
   'Awake at': 'All hands at',
   'Back': 'Back to port',
   'Back to home': 'Back to port',
@@ -91,8 +92,8 @@ export const pirate: Record<string, string> = {
     'Scoff grub till the yard closes. Most doubloons at the end wins. The hoard shrinks as the sand runs out.',
   'Eat while nobody is looking. Get caught and you lose the meal.':
     'Scoff grub while no soul be watchin’. Get caught and ye lose the lot. Arr!',
-  'eating': 'at the grub',
   'Eating': 'Scoffin’ grub',
+  'eating': 'at the grub',
   'Eating until you stop.': 'Scoffin’ till ye say avast.',
   'Enter': 'Board',
   'Every chicken in the game, yards still running included. Tap a column to rank by it, or a chicken to add it to your flock. Shows the top {0}.':
@@ -154,6 +155,7 @@ export const pirate: Record<string, string> = {
   'Longest meal possible right now: {0}.': 'Longest meal ye can take right now: {0}.',
   'Looking for that yard…': 'Scannin’ the horizon fer that yard…',
   'Looking for your yards…': 'Scannin’ the horizon fer yer yards…',
+  'Minutes': 'Minutes',
   'minutes': 'minutes',
   'My chicken': 'Me bird',
   'Name your chicken': 'Name yer bird',
@@ -229,11 +231,17 @@ export const pirate: Record<string, string> = {
   'Start a chicken yard': 'Open a chicken yard',
   'Start eating for {0}': 'Scoff grub fer {0}',
   'Start feeding': 'Tuck in',
+  'Start later': 'Set sail later',
+  'Start now': 'Weigh anchor now',
   'Start playing': 'Set sail',
   'Start without them': 'Weigh anchor without ’em',
+  'Starts in {0}': 'Sets sail in {0}',
+  'Starts in {0} · runs for {1}': 'Sets sail in {0} · sails fer {1}',
+  'Starts in {0}, then runs for {1}.': 'Sets sail in {0}, then runs fer {1}.',
   'Starts once every invited chicken has answered, then runs for {0}.':
     'Sets sail once every summoned bird has answered, then runs fer {0}.',
   'Starts when everyone has answered, then runs for {0}.': 'Sets sail when all hands have answered, then runs fer {0}.',
+  'Starts {0}, then runs for {1}.': 'Sets sail {0}, then runs fer {1}.',
   'Stop and keep it': 'Avast, and keep the lot',
   'Stop feeding': 'Avast eatin’',
   'Sundown': 'Sundown Raid',
@@ -259,9 +267,12 @@ export const pirate: Record<string, string> = {
   'The chickens are asleep.': 'The birds be in their hammocks.',
   'The first chicken to reach the target size wins at once. The pile shrinks as the biggest chicken closes in.':
     'The first bird to fatten to the mark wins on the spot. The hoard shrinks as the fattest bird closes in.',
+  'The game begins after a wait you choose. Chickens who join early wait in the yard and see the countdown.':
+    'The game begins after a wait o’ yer choosin’. Birds who board early wait in the yard and watch the hourglass.',
   'The Game of Chicken': 'The Game o’ Chicken',
   'The game only starts once every invited chicken has joined or declined. You can still start it yourself.':
     'The game only sets sail once every summoned bird has boarded or said nay. Ye can still weigh anchor yerself.',
+  'The game starts in': 'The game sets sail in',
   'The goal must be at least 10.': 'The mark must be 10 at the least.',
   'The old name becomes free for someone else.': 'Yer old name be up fer grabs.',
   'The pile holds a fixed amount of feed. When it is all eaten, whoever ate the most wins. Feed from a lost meal goes back in the pile, apart from the stolen third.':
@@ -270,6 +281,8 @@ export const pirate: Record<string, string> = {
   'The sky in the yard follows your own clock and is only scenery. Chickens can eat at night unless the yard has sleep hours.':
     'The sky o’er the yard follows yer own clock and be naught but scenery. Birds can eat by moonlight unless the yard keeps hammock hours.',
   'The standoff': 'The standoff',
+  'The start can be at most a fortnight away.': 'The start can be a fortnight off at most.',
+  'The start must be at least a minute away.': 'The start must be a minute off at the least.',
   'The yard is yours': 'The yard be yers, Cap’n',
   'The yard must stay open for at least a minute.': 'The yard must stay open a minute at the least.',
   'Then always open the game from that icon. On iPhone the icon keeps its own sign-in, so sign in once more there.':
@@ -300,7 +313,6 @@ export const pirate: Record<string, string> = {
   'Wait for everyone': 'Wait fer all hands',
   'Wait them out, or leave and come back later.': 'Wait ’em out, or slink off and come back later.',
   'Waiting for the flock': 'Waitin’ fer the crew',
-  'Waiting for the invited chickens to answer.': 'Waitin’ fer the summoned birds to answer.',
   'Walking in…': 'Swaggerin’ in…',
   'Walking to the yard…': 'Rowin’ to the yard…',
   'Wattle': 'Wattle',
@@ -318,8 +330,8 @@ export const pirate: Record<string, string> = {
   'Yard stays open for': 'Yard stays open fer',
   'Yards': 'Yards',
   'Yards you are already in keep the chicken you chose for them.': 'Yards ye already sail in keep the bird ye chose fer ’em.',
-  'You': 'Ye',
   'you': 'ye',
+  'You': 'Ye',
   'You and your friends side by side. Tap a column to sort by it; tap again to reverse.':
     'Ye and yer mateys, broadside to broadside. Tap a column to sort by it; tap again to turn about.',
   'You are a chicken. There is one pile of feed and everyone wants it. Eat while nobody is looking, because the moment another chicken walks in, your meal is gone.':
@@ -333,6 +345,7 @@ export const pirate: Record<string, string> = {
   'You are now {0}.': 'Henceforth ye be {0}.',
   'You are outside the top {0} for this column; your row is added at the end.':
     'Ye be outside the top {0} fer this column; yer row be tacked on at the stern.',
+  'You are the first one here.': 'Ye be the first aboard.',
   'You can close the app. Your chicken keeps eating until the timer runs out, and the whole meal is then yours.':
     'Ye can close the app. Yer bird keeps eatin’ till the hourglass runs out, and the whole meal be yers.',
   'You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.':
@@ -360,6 +373,7 @@ export const pirate: Record<string, string> = {
   'Your yards': 'Yer yards',
   '{0} are in the yard. Nobody eats while another chicken is watching.': '{0} be in the yard. No bird eats while another be watchin’.',
   '{0} caught {1} eating and took {2} of their {3} feed.': '{0} caught {1} at the grub and plundered {2} o’ their {3} grub. Arr!',
+  '{0} chickens are waiting in the yard.': '{0} birds be waitin’ in the yard.',
   '{0} days': '{0} days at sea',
   '{0} finished a meal of {1} feed.': '{0} scoffed a meal o’ {1} grub.',
   '{0} hours': '{0} hours',

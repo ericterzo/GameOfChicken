@@ -61,7 +61,9 @@ export interface Yard {
   goal: number | null;
   hardcore: boolean;
   sleep: Sleep | null;
-  /** 'waiting': invited chickens have not all answered yet, nobody can eat. */
+  /** When set, the game begins at this moment (the yard waits until then). */
+  startsAt?: number | null;
+  /** 'waiting': not begun yet (a set start time, or invited chickens still to answer); nobody can eat. */
   status: 'waiting' | 'active' | 'finished';
   winnerUids: string[];
   eating: Eating | null;
@@ -201,6 +203,8 @@ function finishIfOver(yard: Yard, now: number): void {
 
 /** Bank a meal that has run its course, and close the yard if it is over. */
 function settleInPlace(yard: Yard, now: number): void {
+  // A yard with a set start time begins then, whoever is the first to notice.
+  if (yard.status === 'waiting' && yard.startsAt != null && now >= yard.startsAt) start(yard, yard.startsAt);
   if (yard.status !== 'active') return;
   if (yard.eating && mealEnd(yard, now) <= now) {
     yard.members[yard.eating.uid].points += mealPoints(yard, now);
@@ -259,7 +263,9 @@ export function othersPresent(yard: Yard, uid: string, now: number): string[] {
 /** Why `uid` cannot start eating right now, or null if they can. */
 export function whyCannotEat(yard: Yard, uid: string, now: number): string | null {
   if (yard.status === 'finished') return 'This yard is closed.';
-  if (yard.status === 'waiting') return 'Waiting for the invited chickens to answer.';
+  if (yard.status === 'waiting') {
+    return yard.startsAt != null ? 'The game has not started yet.' : 'Waiting for the invited chickens to answer.';
+  }
   if (isAsleep(yard.sleep, now)) return 'The chickens are asleep.';
   if (yard.eating) {
     return yard.eating.uid === uid ? 'You are already eating.' : 'Another chicken is eating.';
@@ -344,7 +350,8 @@ function start(yard: Yard, now: number): void {
 }
 
 function startIfEveryoneAnswered(yard: Yard, now: number): void {
-  if (yard.status === 'waiting' && !(yard.invitedUids ?? []).length) start(yard, now);
+  // A yard with a set start time keeps to it, whatever the answers.
+  if (yard.status === 'waiting' && yard.startsAt == null && !(yard.invitedUids ?? []).length) start(yard, now);
 }
 
 /** An invited player says no. Accepting is simply `join`. */
@@ -376,6 +383,8 @@ export interface NewYard {
   invites?: { uid: string; username: string }[];
   /** Hold the game until every invited chicken has joined or declined. */
   waitForInvites?: boolean;
+  /** Begin the game at this moment instead of straight away. The yard keeps its full length from then. */
+  startsAt?: number | null;
 }
 
 export function createYard(
@@ -390,13 +399,19 @@ export function createYard(
     goal = Math.floor(opts.goal ?? 0);
     if (!(goal >= 10)) throw new RuleError('The goal must be at least 10.');
   }
+  const startsAt = opts.startsAt ?? null;
+  if (startsAt != null) {
+    if (!(startsAt >= now + 55_000)) throw new RuleError('The start must be at least a minute away.');
+    if (startsAt > now + MAX_YARD_MS) throw new RuleError('The start can be at most a fortnight away.');
+  }
   const hardcore = !!opts.hardcore;
   const invites = (opts.invites ?? []).filter((i) => i.uid !== uid).slice(0, MAX_MEMBERS - 1);
   return {
     name, joinCode, ownerUid: uid, createdAt: now, endsAt: opts.endsAt,
     mode: opts.mode, goal, hardcore,
     sleep: hardcore ? null : opts.sleep,
-    status: opts.waitForInvites && invites.length ? 'waiting' : 'active',
+    startsAt,
+    status: startsAt != null || (opts.waitForInvites && invites.length) ? 'waiting' : 'active',
     winnerUids: [], eating: null,
     members: {
       [uid]: { username, look, points: 0, lastSeen: 0, mealsLost: 0, mealsStolen: 0, statsClaimed: false },

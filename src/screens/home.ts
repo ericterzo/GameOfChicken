@@ -57,7 +57,8 @@ export const homeScreen: Screen = (root, app) => {
         <p>${t('<strong>{0}</strong> invited you to <strong>{1}</strong>', esc(y.members[y.ownerUid]?.username ?? t('A friend')), esc(y.name))}
           <span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}<br>
           <span class="muted small">${y.status === 'waiting'
-            ? t('Starts when everyone has answered, then runs for {0}.', span(y.endsAt - y.createdAt))
+            ? y.startsAt != null ? t('Starts in {0}, then runs for {1}.', span(y.startsAt - Date.now()), span(y.endsAt - y.createdAt))
+              : t('Starts when everyone has answered, then runs for {0}.', span(y.endsAt - y.createdAt))
             : t('Already running. Closes in {0}.', span(y.endsAt - Date.now()))}</span></p>
         <div class="row"><button class="btn" type="button" data-accept="${y.id}">${t('Accept')}</button>
           <button class="btn quiet" type="button" data-decline="${y.id}">${t('Decline')}</button></div>
@@ -113,7 +114,7 @@ export const homeScreen: Screen = (root, app) => {
     for (const y of yards) {
       if (inFlight.has(y.id)) continue;
       let job: Promise<void> | null = null;
-      if (y.status === 'active' && settle(y, now).status === 'finished') job = finalizeYard(y.id);
+      if (y.status !== 'finished' && settle(y, now).status !== y.status) job = finalizeYard(y.id);
       else if (hasUnclaimed(y)) job = claimStats(y.id);
       if (job) {
         inFlight.add(y.id);
@@ -138,7 +139,8 @@ export const homeScreen: Screen = (root, app) => {
       let line: string;
       if (y.status === 'waiting') {
         const left = (y.invitedUids ?? []).length;
-        line = left === 1 ? t('Not started · waiting for 1 invited chicken') : t('Not started · waiting for {0} invited chickens', left);
+        line = y.startsAt != null ? t('Starts in {0}', span(y.startsAt - now))
+          : left === 1 ? t('Not started · waiting for 1 invited chicken') : t('Not started · waiting for {0} invited chickens', left);
       } else if (y.status === 'active') {
         line = t('Closes in {0} · you have {1}', span(y.endsAt - now), num(mine));
       } else if (!countsForRecords(y)) {

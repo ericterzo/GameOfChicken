@@ -283,4 +283,23 @@ describe('yards', () => {
     await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'yards/y2'), y); });
     await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y2'), { claimedUids: ['ben'] }));
   });
+
+  it('starts a yard with a set start time at that time, and not before', async () => {
+    const now = Date.now();
+    const opts = { startsAt: now + 3600_000 };
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/later'), freshYard(opts)));
+    await assertFails(setDoc(doc(dbFor('anna'), 'yards/bad1'), { ...freshYard(opts), status: 'active' }));
+    await assertFails(setDoc(doc(dbFor('anna'), 'yards/bad2'), { ...freshYard(opts), startsAt: now + 30 * 24 * 3600_000 }));
+    // Too early: nobody can pretend the start has come, or move it.
+    const y = freshYard(opts);
+    const early = { ...y, status: 'active', createdAt: y.startsAt, endsAt: y.startsAt! + (y.endsAt - y.createdAt) };
+    await assertFails(setDoc(doc(dbFor('anna'), 'yards/later'), early));
+    await assertFails(updateDoc(doc(dbFor('anna'), 'yards/later'), { startsAt: now + 60_000 }));
+    // The start came an hour ago and nobody was looking: the first visitor finds it running since then.
+    const past = { ...freshYard(), status: 'waiting' as const, startsAt: now - 3600_000 };
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'yards/y1'), past); });
+    const started = touch(past, 'anna', Date.now()).yard;
+    await assertFails(setDoc(doc(dbFor('anna'), 'yards/y1'), { ...started, endsAt: started.endsAt + 3600_000 }));
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), started));
+  });
 });

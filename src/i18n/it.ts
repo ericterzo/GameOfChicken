@@ -40,6 +40,7 @@ export const it: Record<string, string> = {
     'Chiunque può aprire un’aia e scegliere il gioco, quanto resta aperta (fino a due settimane) e le regole extra.',
   'Asleep from': 'A dormire dalle',
   'At most a fortnight from now.': 'Al massimo tra due settimane.',
+  'At {0}. Then the yard runs for {1}.': 'Alle {0}. Poi l’aia dura {1}.',
   'Awake at': 'Sveglia alle',
   'Back': 'Indietro',
   'Back to home': 'Torna alla home',
@@ -92,8 +93,8 @@ export const it: Record<string, string> = {
   'Eat until the yard closes. Most points at the end wins. The pile shrinks as time runs out.':
     'Mangia finché l’aia non chiude. Vince chi ha più punti alla fine. Il mucchio cala con il passare del tempo.',
   'Eat while nobody is looking. Get caught and you lose the meal.': 'Mangia mentre nessuno guarda. Se ti beccano, perdi il pasto.',
-  'eating': 'mangia',
   'Eating': 'Mangiare',
+  'eating': 'mangia',
   'Eating until you stop.': 'Mangi finché non ti fermi.',
   'Enter': 'Entra',
   'Every chicken in the game, yards still running included. Tap a column to rank by it, or a chicken to add it to your flock. Shows the top {0}.':
@@ -155,6 +156,7 @@ export const it: Record<string, string> = {
   'Longest meal possible right now: {0}.': 'Pasto più lungo possibile adesso: {0}.',
   'Looking for that yard…': 'Cerco quell’aia…',
   'Looking for your yards…': 'Cerco le tue aie…',
+  'Minutes': 'Minuti',
   'minutes': 'minuti',
   'My chicken': 'Il mio pollo',
   'Name your chicken': 'Dai un nome al tuo pollo',
@@ -230,11 +232,17 @@ export const it: Record<string, string> = {
   'Start a chicken yard': 'Apri un’aia',
   'Start eating for {0}': 'Mangia per {0}',
   'Start feeding': 'Inizia a mangiare',
+  'Start later': 'Inizia più tardi',
+  'Start now': 'Inizia adesso',
   'Start playing': 'Inizia a giocare',
   'Start without them': 'Inizia senza di loro',
+  'Starts in {0}': 'Inizia tra {0}',
+  'Starts in {0} · runs for {1}': 'Inizia tra {0} · dura {1}',
+  'Starts in {0}, then runs for {1}.': 'Inizia tra {0}, poi dura {1}.',
   'Starts once every invited chicken has answered, then runs for {0}.':
     'Inizia quando tutti i polli invitati hanno risposto, poi dura {0}.',
   'Starts when everyone has answered, then runs for {0}.': 'Inizia quando tutti hanno risposto, poi dura {0}.',
+  'Starts {0}, then runs for {1}.': 'Inizia {0}, poi dura {1}.',
   'Stop and keep it': 'Ferma e tieni tutto',
   'Stop feeding': 'Smetti di mangiare',
   'Sundown': 'Tramonto',
@@ -261,9 +269,12 @@ export const it: Record<string, string> = {
   'The chickens are asleep.': 'I polli dormono.',
   'The first chicken to reach the target size wins at once. The pile shrinks as the biggest chicken closes in.':
     'Il primo pollo che raggiunge la taglia stabilita vince subito. Il mucchio cala man mano che il pollo più grosso si avvicina.',
+  'The game begins after a wait you choose. Chickens who join early wait in the yard and see the countdown.':
+    'Il gioco comincia dopo un’attesa che scegli tu. I polli che entrano prima aspettano nell’aia e vedono il conto alla rovescia.',
   'The Game of Chicken': 'Il Gioco del Pollo',
   'The game only starts once every invited chicken has joined or declined. You can still start it yourself.':
     'Il gioco inizia solo quando ogni pollo invitato è entrato o ha rifiutato. Puoi comunque farlo partire tu.',
+  'The game starts in': 'Il gioco inizia tra',
   'The goal must be at least 10.': 'L’obiettivo deve essere almeno 10.',
   'The old name becomes free for someone else.': 'Il vecchio nome torna libero per qualcun altro.',
   'The pile holds a fixed amount of feed. When it is all eaten, whoever ate the most wins. Feed from a lost meal goes back in the pile, apart from the stolen third.':
@@ -272,6 +283,8 @@ export const it: Record<string, string> = {
   'The sky in the yard follows your own clock and is only scenery. Chickens can eat at night unless the yard has sleep hours.':
     'Il cielo dell’aia segue il tuo orologio ed è solo scenografia. I polli possono mangiare di notte, a meno che l’aia non abbia ore di sonno.',
   'The standoff': 'Lo stallo',
+  'The start can be at most a fortnight away.': 'L’inizio può essere al massimo tra due settimane.',
+  'The start must be at least a minute away.': 'L’inizio deve essere almeno tra un minuto.',
   'The yard is yours': 'L’aia è tua',
   'The yard must stay open for at least a minute.': 'L’aia deve restare aperta almeno un minuto.',
   'Then always open the game from that icon. On iPhone the icon keeps its own sign-in, so sign in once more there.':
@@ -302,7 +315,6 @@ export const it: Record<string, string> = {
   'Wait for everyone': 'Aspetta tutti',
   'Wait them out, or leave and come back later.': 'Aspetta che se ne vadano, oppure esci e torna più tardi.',
   'Waiting for the flock': 'In attesa dello stormo',
-  'Waiting for the invited chickens to answer.': 'In attesa della risposta dei polli invitati.',
   'Walking in…': 'Sto entrando…',
   'Walking to the yard…': 'Vado verso l’aia…',
   'Wattle': 'Bargigli',
@@ -320,8 +332,8 @@ export const it: Record<string, string> = {
   'Yard stays open for': 'L’aia resta aperta per',
   'Yards': 'Aie',
   'Yards you are already in keep the chicken you chose for them.': 'Le aie in cui sei già tengono il pollo che avevi scelto.',
-  'You': 'Tu',
   'you': 'tu',
+  'You': 'Tu',
   'You and your friends side by side. Tap a column to sort by it; tap again to reverse.':
     'Tu e i tuoi amici fianco a fianco. Tocca una colonna per ordinare; tocca ancora per invertire.',
   'You are a chicken. There is one pile of feed and everyone wants it. Eat while nobody is looking, because the moment another chicken walks in, your meal is gone.':
@@ -335,6 +347,7 @@ export const it: Record<string, string> = {
   'You are now {0}.': 'Ora sei {0}.',
   'You are outside the top {0} for this column; your row is added at the end.':
     'Sei fuori dai primi {0} per questa colonna; la tua riga è aggiunta in fondo.',
+  'You are the first one here.': 'Sei il primo ad arrivare.',
   'You can close the app. Your chicken keeps eating until the timer runs out, and the whole meal is then yours.':
     'Puoi chiudere l’app. Il tuo pollo continua a mangiare finché il timer non scade, e a quel punto tutto il pasto è tuo.',
   'You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.':
@@ -362,6 +375,7 @@ export const it: Record<string, string> = {
   'Your yards': 'Le tue aie',
   '{0} are in the yard. Nobody eats while another chicken is watching.': '{0} sono nell’aia. Nessuno mangia mentre un altro pollo guarda.',
   '{0} caught {1} eating and took {2} of their {3} feed.': '{0} ha beccato {1} a mangiare e si è preso {2} dei suoi {3} di mangime.',
+  '{0} chickens are waiting in the yard.': '{0} polli aspettano nell’aia.',
   '{0} days': '{0} giorni',
   '{0} finished a meal of {1} feed.': '{0} ha finito un pasto di {1} di mangime.',
   '{0} hours': '{0} ore',

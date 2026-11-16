@@ -70,6 +70,13 @@ export const newYardScreen: Screen = (root, app) => {
       <label id="until-row" hidden>${t('Closes at')}<input name="until" type="datetime-local">
         <small class="muted">${t('At most a fortnight from now.')}</small></label>
 
+      <label class="check"><input type="checkbox" name="later">
+        <span><strong>${t('Start later')}</strong><small>${t('The game begins after a wait you choose. Chickens who join early wait in the yard and see the countdown.')}</small></span></label>
+      <div class="row" id="later-times" hidden>
+        <label>${t('Hours')}<input name="laterHours" type="number" min="0" max="336" step="1" value="0" inputmode="numeric"></label>
+        <label>${t('Minutes')}<input name="laterMinutes" type="number" min="0" max="59" step="1" value="30" inputmode="numeric"></label>
+      </div>
+
       <label class="check"><input type="checkbox" name="hardcore">
         <span><strong>${t('Hardcore')}</strong><small>${t('No timers. Your chicken only eats while this app is open with the screen on.')}</small></span></label>
 
@@ -125,6 +132,10 @@ export const newYardScreen: Screen = (root, app) => {
     const hardcore = form.hardcore.checked;
     q('#sleep-block').hidden = hardcore;
     q('#sleep-times').hidden = !form.sleep.checked;
+    q('#later-times').hidden = !form.later.checked;
+    // A set start time decides when the game begins, so there is nothing to wait for.
+    const wait = form.querySelector<HTMLInputElement>('input[name=waitForInvites]');
+    if (wait) (wait.closest('label') as HTMLElement).hidden = form.later.checked;
     const until = form.until as HTMLInputElement;
     until.min = toLocalInput(Date.now() + 5 * 60000);
     until.max = toLocalInput(Date.now() + MAX_YARD_MS);
@@ -141,7 +152,12 @@ export const newYardScreen: Screen = (root, app) => {
       const hardcore = form.hardcore.checked as boolean;
       const custom = form.duration.value === 'custom';
       // "2 weeks" must not tip over the limit while the request travels.
-      const endsAt = custom ? new Date(form.until.value).getTime() : now + Number(form.duration.value) - 5000;
+      const delay = form.later.checked
+        ? (Math.max(0, Math.floor(Number(form.laterHours.value) || 0)) * 60 + Math.max(0, Math.floor(Number(form.laterMinutes.value) || 0))) * 60_000
+        : 0;
+      if (form.later.checked && delay < 60_000) throw new Error('The start must be at least a minute away.');
+      // The yard keeps its full length from the start; a closing date picked by hand stays as picked.
+      const endsAt = custom ? new Date(form.until.value).getTime() - delay : now + Number(form.duration.value) - 5000;
       if (!Number.isFinite(endsAt)) throw new Error(t('Pick when the yard closes.'));
       const opts: NewYard = {
         name: form.yardName.value,
@@ -152,10 +168,11 @@ export const newYardScreen: Screen = (root, app) => {
         sleep: !hardcore && form.sleep.checked
           ? { startMin: minutes(form.sleepFrom.value), endMin: minutes(form.sleepTo.value), offsetMin: -new Date().getTimezoneOffset() }
           : null,
+        startsAt: delay ? now + delay : null,
       };
       const picked = new Set(Array.from(form.querySelectorAll<HTMLInputElement>('input[name=invite]:checked'), (i) => i.value));
       opts.invites = friends.filter((f) => picked.has(f.uid)).map((f) => ({ uid: f.uid, username: f.username }));
-      opts.waitForInvites = !!form.waitForInvites?.checked;
+      opts.waitForInvites = !delay && !!form.waitForInvites?.checked;
       const id = await createYard(app.profile, opts, picker.get());
       toast(opts.invites.length ? t('Yard open. Your flock has been invited.') : t('Yard open. Share the code with your flock.'), 'good');
       app.go(`#/yard/${id}`);
@@ -184,7 +201,9 @@ export const joinScreen: Screen = (root, app, [rawCode]) => {
     const names = yard.memberUids.map((u) => esc(yard.members[u].username)).join(', ');
     card.innerHTML = `<h1>${t('Join {0}', esc(yard.name))}</h1>
       <p><span class="tag-pill">${t(MODE_NAMES[yard.mode])}</span>${yard.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}</p>
-      <p class="muted">${t(MODE_BLURBS[yard.mode])} ${yard.status === 'waiting'
+      <p class="muted">${t(MODE_BLURBS[yard.mode])} ${yard.status === 'waiting' && yard.startsAt != null
+        ? t('Starts {0}, then runs for {1}.', dateTime(yard.startsAt), span(yard.endsAt - yard.createdAt))
+        : yard.status === 'waiting'
         ? t('Starts once every invited chicken has answered, then runs for {0}.', span(yard.endsAt - yard.createdAt))
         : t('Closes {0}.', dateTime(yard.endsAt))}<br>${t('In the yard: {0}.', names)}</p>
       <div id="picker"></div>

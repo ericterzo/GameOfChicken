@@ -114,6 +114,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
   function paintHead(y: Yard, now: number): void {
     const when = y.status === 'finished' ? t('Closed')
+      : y.status === 'waiting' && y.startsAt != null ? t('Starts in {0} · runs for {1}', span(y.startsAt - now), span(y.endsAt - y.createdAt))
       : y.status === 'waiting' ? t('Not started · runs for {0}', span(y.endsAt - y.createdAt))
       : t('Closes in {0}', span(y.endsAt - now));
     const html = `<a class="back" href="#/" aria-label="${t('Back to home')}">‹</a>
@@ -136,8 +137,9 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
   function paintScene(y: Yard, now: number): void {
     const asleep = y.status === 'active' && isAsleep(y.sleep, now);
+    // Before the game begins everyone who has joined is shown waiting together.
     const inYard = (u: string) =>
-      y.status === 'finished' || u === uid || y.eating?.uid === u || now - y.members[u].lastSeen < PRESENCE_MS;
+      y.status === 'finished' || y.status === 'waiting' || u === uid || y.eating?.uid === u || now - y.members[u].lastSeen < PRESENCE_MS;
     const chickens: SceneChicken[] = y.memberUids.filter(inYard).map((u) => ({
       look: y.members[u].look,
       name: y.members[u].username,
@@ -223,6 +225,21 @@ export const yardScreen: Screen = (root, app, [id]) => {
       set(`finished:${headline}`, `<h2>${esc(headline)}</h2><p class="muted">${t('You finished with {0} points.', num(mine))} ${t(MODE_BLURBS[y.mode])}</p>
         ${countsForRecords(y) ? '' : `<p class="muted small">${t('Nobody else joined, so this yard does not count towards your record.')}</p>`}
         <a class="btn" href="#/">${t('Back to your yards')}</a>`);
+      return;
+    }
+
+    if (y.status === 'waiting' && y.startsAt != null) {
+      const mine = y.ownerUid === uid;
+      set(`countdown:${mine}:${y.memberUids.length}`, `<h2>${t('The game starts in')}</h2>
+        <p class="big countdown" id="count"></p>
+        <p class="muted" id="count-at"></p>
+        <p>${y.memberUids.length === 1 ? t('You are the first one here.') : t('{0} chickens are waiting in the yard.', y.memberUids.length)}</p>
+        ${mine ? `<button class="btn" id="start-now" type="button">${t('Start now')}</button>` : ''}`, () => {
+        const b = panel.querySelector<HTMLButtonElement>('#start-now');
+        if (b) b.onclick = () => void busy(b, () => startYardNow(id, uid));
+      });
+      text('#count', span(y.startsAt - now));
+      text('#count-at', t('At {0}. Then the yard runs for {1}.', dateTime(y.startsAt), span(y.endsAt - y.createdAt)));
       return;
     }
 
