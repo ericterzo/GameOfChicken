@@ -1,0 +1,54 @@
+# Tests, builds and publishes the game (site + security rules) whenever main changes.
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: Game-rule tests
+        run: npm test
+      - name: Security-rule tests
+        run: npm run test:rules
+      - name: Firebase settings
+        # The web settings are public; the live site serves them itself.
+        run: |
+          curl -fsS https://thegameofchicken.web.app/__/firebase/init.json -o init.json
+          node -e "
+            const c = require('./init.json');
+            for (const k of ['apiKey', 'authDomain', 'projectId', 'appId']) if (!c[k]) throw new Error('missing ' + k);
+            require('fs').writeFileSync('.env', [
+              'VITE_FIREBASE_API_KEY=' + c.apiKey,
+              'VITE_FIREBASE_AUTH_DOMAIN=' + c.authDomain,
+              'VITE_FIREBASE_PROJECT_ID=' + c.projectId,
+              'VITE_FIREBASE_APP_ID=' + c.appId,
+            ].join('\n') + '\n');
+          "
+          rm init.json
+      - run: npm run build
+      - name: Publish to Firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/key.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/key.json"
+          npx firebase deploy --project thegameofchicken --non-interactive
+          rm "$RUNNER_TEMP/key.json"
