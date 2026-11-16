@@ -118,3 +118,24 @@ window.addEventListener('hashchange', route);
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => void navigator.serviceWorker.register('/sw.js'));
 }
+
+// A phone can keep the app open for days. Whenever it comes back to the front
+// (and at most once a minute), check whether a newer version has been published
+// and, if so, reload into it, so everyone plays by the same rules.
+if (import.meta.env.PROD) {
+  const mine = document.querySelector<HTMLScriptElement>('script[type=module][src]')?.getAttribute('src') ?? '';
+  let lastCheck = Date.now();
+  const checkForUpdate = async () => {
+    if (!mine || document.hidden || Date.now() - lastCheck < 60_000) return;
+    lastCheck = Date.now();
+    try {
+      const page = await (await fetch('/index.html', { cache: 'no-store' })).text();
+      const latest = /<script[^>]+type="module"[^>]+src="([^"]+)"/.exec(page)?.[1];
+      if (latest && latest !== mine) location.reload();
+    } catch {
+      /* offline: try again later */
+    }
+  };
+  document.addEventListener('visibilitychange', () => void checkForUpdate());
+  window.addEventListener('hashchange', () => void checkForUpdate());
+}

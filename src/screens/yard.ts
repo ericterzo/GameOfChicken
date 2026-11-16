@@ -31,6 +31,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   let wake: WakeLockSentinel | null = null;
   let beat = 0;
   let claiming = false;
+  let notMember = 0;
 
   root.innerHTML = `
     <section class="yard">
@@ -76,6 +77,8 @@ export const yardScreen: Screen = (root, app, [id]) => {
       console.warn('touch failed', e);
     } finally {
       touching = false;
+      // Left while that was on its way: it marked me present again, so walk out once more.
+      if (!alive || document.hidden) void leaveYard(id, uid);
     }
   }
 
@@ -336,7 +339,14 @@ export const yardScreen: Screen = (root, app, [id]) => {
       root.innerHTML = `<section class="card"><h1>${t('Yard not found')}</h1><a class="btn" href="#/">${t('Back')}</a></section>`;
       return;
     }
-    if (!next.members[uid]) { app.go(`#/join/${next.joinCode}`); return; }
+    if (!next.members[uid]) {
+      // Just after joining, the first picture of the yard can be an older one
+      // without me in it: give the fresh one a moment before sending me to join.
+      if (!notMember) notMember = window.setTimeout(() => { if (alive) app.go(`#/join/${next.joinCode}`); }, 3000);
+      return;
+    }
+    clearTimeout(notMember);
+    notMember = 0;
     const prev = yard;
     yard = next;
     if (!stopBoard) {
@@ -381,6 +391,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     alive = false;
     stopWatching();
     stopBoard?.();
+    clearTimeout(notMember);
     clearInterval(tick);
     clearInterval(beat);
     document.removeEventListener('visibilitychange', onVisibility);
