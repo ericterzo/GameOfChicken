@@ -3,7 +3,7 @@ import {
   claimStats, declineInvite, finalizeYard, hasUnclaimed, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
   type InboxMessage, type YardDoc,
 } from '../api';
-import { countsForRecords, MODE_NAMES, settle } from '../game/rules';
+import { countsForRecords, isShot, MODE_NAMES, settle } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
@@ -137,7 +137,11 @@ export const homeScreen: Screen = (root, app) => {
       const mine = y.members[uid]?.points ?? 0;
       const tags = `<span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}`;
       let line: string;
-      if (y.status === 'waiting') {
+      const shot = y.status === 'active' && isShot(y, uid, now);
+      if (shot) {
+        line = `<strong class="shot">${t('You have been shot by {0}. You can go back in {1}.',
+          esc(y.members[y.members[uid].shotBy ?? '']?.username ?? t('A chicken')), span(y.members[uid].shotUntil! - now))}</strong>`;
+      } else if (y.status === 'waiting') {
         const left = (y.invitedUids ?? []).length;
         line = y.startsAt != null ? t('Starts in {0}', span(y.startsAt - now))
           : left === 1 ? t('Not started · waiting for 1 invited chicken') : t('Not started · waiting for {0} invited chickens', left);
@@ -154,7 +158,7 @@ export const homeScreen: Screen = (root, app) => {
       return `<a class="yard-row${y.status === 'finished' ? ' closed' : ''}" href="#/yard/${id}">
         <span class="yard-name">${esc(y.name)} ${tags}</span>
         <span class="muted">${line}</span>
-        <span class="yard-go">${y.status === 'finished' ? t('View') : t('Enter')}</span></a>`;
+        <span class="yard-go">${shot ? '' : y.status === 'finished' ? t('View') : t('Enter')}</span></a>`;
     };
     list.innerHTML =
       (open.length ? open.map(row).join('') : `<p class="muted">${t('No open yards right now.')}</p>`) +
@@ -175,5 +179,10 @@ export const homeScreen: Screen = (root, app) => {
     watchMyYards(uid, (ys) => { yards = ys; loaded = true; housekeeping(); paintYards(); }),
   ];
   const timer = window.setInterval(() => { housekeeping(); paintYards(); paintCosy(); }, 15_000);
-  return () => { stops.forEach((s) => s()); clearInterval(timer); };
+  // While I am shot out of a yard, its wait counts down second by second.
+  const shotTimer = window.setInterval(() => {
+    const now = Date.now();
+    if (yards.some((y) => (y.members[uid]?.shotUntil ?? 0) > now - 2000)) paintYards();
+  }, 1000);
+  return () => { stops.forEach((s) => s()); clearInterval(timer); clearInterval(shotTimer); };
 };

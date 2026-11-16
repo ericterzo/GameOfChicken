@@ -87,7 +87,7 @@ service cloud.firestore {
 
       function settingsUnchanged() {
         return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
-                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids'])
+                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids', 'shot'])
           && clockOk()
           && !(after().status == 'waiting' && before().status != 'waiting');
       }
@@ -211,6 +211,9 @@ service cloud.firestore {
             || (entry().kind == 'caught'
               && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'lost', 'taken'])
               && entry().uid == me())
+            || (entry().kind == 'shot'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName'])
+              && entry().uid == me() && entry().at > nowMs() - slack())
           );
       }
     }

@@ -285,3 +285,12 @@ input:not([type='checkbox']):not([type='radio']), select {
 .player-card .row .btn { flex: 1; width: auto; min-height: 46px; font-size: 1rem; }
 .player-card .row .btn { padding: 0 10px; font-size: 0.95rem; }
 .panel .countdown { font-size: 2.6rem; }
+
+/* The gun */
+.ck-flash { animation: flash 0.25s steps(2, jump-none) infinite; }
+@keyframes flash { from { opacity: 1; } to { opacity: 0.15; } }
+.ck-shot { transform-box: fill-box; transform-origin: 40% 100%; animation: keel 0.7s ease-in forwards; }
+@keyframes keel { to { transform: rotate(-100deg); opacity: 0.55; } }
+.bang { font-weight: 900; font-size: 18px; fill: #d93025; stroke: #fff; stroke-width: 4px; paint-order: stroke; }
+.yard-row .shot { color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { .ck-flash { animation: none; } .ck-shot { animation: none; transform: rotate(-100deg); } }

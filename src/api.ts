@@ -440,7 +440,7 @@ export function watchMyInvites(uid: string, cb: (yards: YardDoc[]) => void): () 
 
 export interface BoardEntry {
   id: string;
-  kind: 'chat' | 'visit' | 'ate' | 'caught';
+  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot';
   at: number;
   /** Who the line is about: the writer, the visitor, the eater or the catcher. */
   uid: string;
@@ -475,11 +475,46 @@ export function watchBoard(yardId: string, cb: (entries: BoardEntry[]) => void):
 
 export const MAX_NOTE = 300;
 
-export async function postNote(yardId: string, me: Profile, text: string): Promise<void> {
+/**
+ * In a standoff, the word "gun" is not a note: the first chicken to say it
+ * shoots another one out of the yard. Returns the victim's name, or null when
+ * there was no standoff (the word is then posted like any other note).
+ */
+async function drawGun(yardId: string, me: Profile): Promise<string | null> {
+  return yardTx(async (tx) => {
+    const snap = await tx.get(yardRef(yardId));
+    if (!snap.exists()) return null;
+    const before = snap.data() as Yard;
+    const now = Date.now();
+    let shot: ReturnType<typeof rules.shoot>;
+    try {
+      const span = rules.SHOT_MAX_MS - rules.SHOT_MIN_MS;
+      shot = rules.shoot(before, me.uid, now, Math.random(), rules.SHOT_MIN_MS + Math.random() * span);
+    } catch {
+      return null;
+    }
+    if (!shot.victimUid) return null;
+    const victimName = shot.yard.members[shot.victimUid].username;
+    tx.set(yardRef(yardId), shot.yard);
+    tx.set(doc(boardCol(yardId)), {
+      kind: 'shot', at: now, by: me.uid, uid: me.uid, username: shot.yard.members[me.uid].username,
+      victimUid: shot.victimUid, victimName,
+    });
+    return victimName;
+  });
+}
+
+/** Post a note. Resolves to the name of a chicken that was shot instead, if any. */
+export async function postNote(yardId: string, me: Profile, text: string): Promise<string | null> {
   const clean = text.trim().slice(0, MAX_NOTE);
-  if (!clean) return;
+  if (!clean) return null;
   try {
+    if (clean.toLowerCase() === 'gun') {
+      const victim = await drawGun(yardId, me);
+      if (victim) return victim;
+    }
     await addDoc(boardCol(yardId), { kind: 'chat', at: Date.now(), by: me.uid, uid: me.uid, username: me.username, text: clean });
+    return null;
   } catch (e) {
     throw friendly(e);
   }

@@ -6,7 +6,7 @@ import {
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
-  countsForRecords, isAsleep, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
+  countsForRecords, isAsleep, isShot, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
 } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
@@ -138,14 +138,18 @@ export const yardScreen: Screen = (root, app, [id]) => {
   function paintScene(y: Yard, now: number): void {
     const asleep = y.status === 'active' && isAsleep(y.sleep, now);
     // Before the game begins everyone who has joined is shown waiting together.
+    // For a moment after a shot, the gun is out and the victim is seen keeling over.
+    const bang = y.shot && now - y.shot.at < 3500 && now >= y.shot.at - 5000 ? y.shot : null;
     const inYard = (u: string) =>
-      y.status === 'finished' || y.status === 'waiting' || u === uid || y.eating?.uid === u || now - y.members[u].lastSeen < PRESENCE_MS;
+      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || u === uid || y.eating?.uid === u || now - y.members[u].lastSeen < PRESENCE_MS;
     const chickens: SceneChicken[] = y.memberUids.filter(inYard).map((u) => ({
       look: y.members[u].look,
       name: y.members[u].username,
       size: Math.round(sizeFor(y, u, now) * 50) / 50,
       eating: y.eating?.uid === u,
       me: u === uid,
+      gun: bang?.byUid === u,
+      shot: bang?.victimUid === u,
     }));
     // The sky follows the viewer's clock; a new picture each minute is plenty.
     const time = Math.floor(now / 60000) * 60000;
@@ -194,6 +198,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const who = `<strong>${name(e.uid, e.username)}</strong>`;
       if (e.kind === 'chat') return `${who}: ${esc(e.text ?? '')}`;
       if (e.kind === 'visit') return t('{0} was here.', who);
+      if (e.kind === 'shot') return t('{0} shot {1}.', who, `<strong>${name(e.victimUid, e.victimName)}</strong>`);
       if (e.kind === 'ate') return t('{0} finished a meal of {1} feed.', who, num(e.amount ?? 0));
       return t('{0} caught {1} eating and took {2} of their {3} feed.', who, `<strong>${name(e.victimUid, e.victimName)}</strong>`, num(e.taken ?? 0), num(e.lost ?? 0));
     };
@@ -364,6 +369,13 @@ export const yardScreen: Screen = (root, app, [id]) => {
     }
     clearTimeout(notMember);
     notMember = 0;
+    // Shot in a standoff: out of the yard until the wait is over (the home screen shows how long).
+    if (isShot(next, uid, Date.now())) {
+      toast(t('You have been shot by {0}! You are out of the yard for {1}.',
+        next.members[next.members[uid].shotBy ?? '']?.username ?? t('A chicken'), span(next.members[uid].shotUntil! - Date.now())), 'bad');
+      app.go('#/');
+      return;
+    }
     const prev = yard;
     yard = next;
     if (!stopBoard) {
@@ -396,8 +408,9 @@ export const yardScreen: Screen = (root, app, [id]) => {
     e.preventDefault();
     const input = noteForm.elements.namedItem('text') as HTMLInputElement;
     void busy(noteForm.querySelector('button'), async () => {
-      await postNote(id, app.profile, input.value);
+      const victim = await postNote(id, app.profile, input.value);
       input.value = '';
+      if (victim) toast(t('Bang! You shot {0}. The yard is yours for a few minutes.', victim), 'good');
     });
   };
 

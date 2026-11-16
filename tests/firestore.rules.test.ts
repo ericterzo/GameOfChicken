@@ -234,6 +234,8 @@ describe('yards', () => {
     await assertSucceeds(addDoc(board('ben'), {
       kind: 'caught', at, by: 'ben', uid: 'ben', username: 'Ben', victimUid: 'anna', victimName: 'Anna', lost: 30, taken: 10,
     }));
+    await assertSucceeds(addDoc(board('ben'), { kind: 'shot', at, by: 'ben', uid: 'ben', username: 'Ben', victimUid: 'anna', victimName: 'Anna' }));
+    await assertFails(addDoc(board('ben'), { kind: 'shot', at, by: 'ben', uid: 'anna', username: 'Anna', victimUid: 'ben', victimName: 'Ben' }));
     await assertSucceeds(getDocs(board('ben')));
     // Not for outsiders, not in someone else's name, not empty or endless, not from the future.
     await assertFails(getDocs(board('carl')));

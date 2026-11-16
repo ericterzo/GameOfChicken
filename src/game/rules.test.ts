@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, sizeFor, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
+  RuleError, settle, shoot, sizeFor, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -479,5 +479,30 @@ describe('a set start time', () => {
     const opts = { name: 'X', mode: 'sundown' as const, goal: null, endsAt: s(HOUR), hardcore: false, sleep: null };
     expect(() => createYard({ ...opts, startsAt: s(10) }, 'a', 'Anna', look, 'ABC123', T0)).toThrow(RuleError);
     expect(() => createYard({ ...opts, startsAt: s(15 * 24 * HOUR) }, 'a', 'Anna', look, 'ABC123', T0)).toThrow(RuleError);
+  });
+});
+
+describe('the gun', () => {
+  const standoff = () => touch(touch(yard(), 'a', s(0)).yard, 'b', s(1)).yard;
+
+  it('ends a standoff: the victim is thrown out and kept out for two to four minutes', () => {
+    const { yard: y, victimUid } = shoot(standoff(), 'a', s(5), 0.5, 180_000);
+    expect(victimUid).toBe('b');
+    expect(y.shot).toEqual({ byUid: 'a', victimUid: 'b', at: s(5) });
+    expect(whyCannotEat(y, 'a', s(6))).toBeNull(); // the yard is Anna's now
+    expect(() => touch(y, 'b', s(60))).toThrow(RuleError);
+    expect(() => startEating(y, 'b', s(60), 30)).toThrow(RuleError);
+    expect(touch(y, 'b', s(186)).yard.members.b.lastSeen).toBe(s(186)); // back after the wait
+    expect(shoot(standoff(), 'a', s(5), 0, 1).yard.members.b.shotUntil).toBe(s(5) + 120_000);
+    expect(shoot(standoff(), 'a', s(5), 0, 9e9).yard.members.b.shotUntil).toBe(s(5) + 240_000);
+  });
+
+  it('does nothing without a standoff, and the shot cannot shoot back', () => {
+    const alone = touch(yard(), 'a', s(0)).yard;
+    expect(shoot(alone, 'a', s(5), 0, 180_000).victimUid).toBeNull();
+    const eating = leave(startEating(yard(), 'a', s(0), 600).yard, 'a');
+    expect(shoot(eating, 'b', s(5), 0, 180_000).victimUid).toBeNull(); // walking in on a meal is a catch, not a standoff
+    const { yard: y } = shoot(standoff(), 'a', s(5), 0, 180_000);
+    expect(() => shoot(y, 'b', s(6), 0, 180_000)).toThrow(RuleError);
   });
 });

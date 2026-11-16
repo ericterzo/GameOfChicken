@@ -14,6 +14,10 @@ export interface SceneChicken {
   size: number;
   eating: boolean;
   me: boolean;
+  /** Has just fired the gun. */
+  gun?: boolean;
+  /** Has just been shot: keels over on the way out. */
+  shot?: boolean;
 }
 
 export interface SceneOptions {
@@ -356,6 +360,13 @@ function pile(frac: number): string {
 
 // ---------- chickens ----------
 
+/** A little pistol held at the wing, pointing where the chicken looks, with a muzzle flash. */
+const GUN = `<g class="ck-gun">
+  <path d="M66 58 h20 v5 h-12 l-2 9 h-6 z" fill="#3a3a3f" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M74 63 q0 4 4 3" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  <path class="ck-flash" d="M87 60.5 l9 -6 l-3 5.5 l8 1 l-8 1 l3 5.5 z" fill="#ffd23f" stroke="#e8743b" stroke-width="1"/>
+</g>`;
+
 function chicken(c: SceneChicken, spot: [number, number]): string {
   const [dx, dy] = spot;
   const k = 0.42 + 0.72 * Math.max(0, Math.min(1, c.size));
@@ -364,8 +375,10 @@ function chicken(c: SceneChicken, spot: [number, number]): string {
   return `<g transform="translate(${PX + dx} ${PY + dy})">
     <ellipse cx="0" cy="0" rx="${f1(27 * k)}" ry="${f1(4.5 * k)}" fill="#000" fill-opacity="0.16"/>
     <g transform="scale(${(flip * k).toFixed(3)} ${k.toFixed(3)}) translate(-48 -94)">
-      <g class="${c.eating ? 'pecking' : ''}">${chickenParts(c.look)}</g>
+      <g class="${c.shot ? 'ck-shot' : c.eating ? 'pecking' : ''}">${chickenParts(c.look, { asleep: c.shot })}</g>
+      ${c.gun ? GUN : ''}
     </g>
+    ${c.gun ? `<text x="0" y="${(top - 17).toFixed(0)}" text-anchor="middle" class="bang">BANG!</text>` : ''}
     <text x="0" y="${top.toFixed(0)}" text-anchor="middle" class="tag${c.me ? ' me' : ''}">${esc(c.name)}</text>
   </g>`;
 }

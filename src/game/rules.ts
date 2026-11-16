@@ -29,6 +29,9 @@ export interface Member {
   /** Feed taken from others by catching them, and feed lost by being caught. Absent on older yards. */
   feedStolen?: number;
   feedLost?: number;
+  /** Shot in a standoff: kept out of the yard until this moment, and by whom. */
+  shotUntil?: number;
+  shotBy?: string;
   statsClaimed: boolean;
 }
 
@@ -76,6 +79,8 @@ export interface Yard {
   declinedUids?: string[];
   /** Members whose result has been added to their lifetime record (see claimStats in api.ts). */
   claimedUids?: string[];
+  /** The latest shot fired in a standoff (see `shoot`), for the yard to act out. */
+  shot?: { byUid: string; victimUid: string; at: number } | null;
 }
 
 export interface InterruptEvent {
@@ -230,6 +235,7 @@ export function settle(yard: Yard, now: number): Yard {
 export function touch(yard: Yard, uid: string, now: number): Result {
   const y = clone(yard);
   if (!y.members[uid]) throw new RuleError('You are not in this yard.');
+  if (isShot(y, uid, now)) throw new RuleError('You have been shot. Wait before going back in.');
   settleInPlace(y, now);
   let interrupted: InterruptEvent | null = null;
   if (y.status === 'active') {
@@ -251,6 +257,34 @@ export function touch(yard: Yard, uid: string, now: number): Result {
   }
   y.members[uid].lastSeen = now;
   return { yard: y, interrupted };
+}
+
+/** True while `uid` is kept out of the yard after being shot. */
+export function isShot(yard: Yard, uid: string, now: number): boolean {
+  return (yard.members[uid]?.shotUntil ?? 0) > now;
+}
+
+export const SHOT_MIN_MS = 2 * 60_000;
+export const SHOT_MAX_MS = 4 * 60_000;
+
+/**
+ * The standoff's secret way out: `uid` draws a gun on another chicken watching
+ * the yard. The victim is thrown out and cannot come back for `waitMs`.
+ * `pick` (0 to 1) chooses the victim when several are watching. Returns no
+ * victim, and the yard untouched, when there is no standoff to end.
+ */
+export function shoot(yard: Yard, uid: string, now: number, pick: number, waitMs: number): { yard: Yard; victimUid: string | null } {
+  const r = touch(yard, uid, now);
+  const y = r.yard;
+  const others = othersPresent(y, uid, now).sort();
+  if (y.status !== 'active' || y.eating || r.interrupted || !others.length) return { yard, victimUid: null };
+  const victimUid = others[Math.min(others.length - 1, Math.floor(Math.max(0, pick) * others.length))];
+  const wait = Math.max(SHOT_MIN_MS, Math.min(SHOT_MAX_MS, Math.round(waitMs)));
+  y.members[victimUid].lastSeen = 0;
+  y.members[victimUid].shotUntil = now + wait;
+  y.members[victimUid].shotBy = uid;
+  y.shot = { byUid: uid, victimUid, at: now };
+  return { yard: y, victimUid };
 }
 
 /** Other members who currently have the yard open. */
