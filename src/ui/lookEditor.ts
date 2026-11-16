@@ -27,17 +27,13 @@ const ACCESSORIES: [Accessory, string][] = [
   ['eyepatch', 'Eyepatch'], ['hand', 'Hand 🤌'], ['crown', 'Crown'], ['bigCrown', 'Grand crown'],
 ];
 
+/** Only what has been earned is listed; how to earn the rest is for players to discover. */
 function accessories(unlocks: Unlocks): string {
   const mine = ACCESSORIES.filter(([k]) => unlocks[k]);
-  const hints = [
-    unlocks.crown ? '' : t('Win a yard to earn a crown.'),
-    unlocks.crown && !unlocks.bigCrown ? t('Win 10 yards for a grand crown.') : '',
-    unlocks.eyepatch && unlocks.hand ? '' : t('Other languages hide more.'),
-  ].filter(Boolean).join(' ');
+  if (!mine.length) return '';
   return `<div class="field"><span class="label">${t('Accessories')}</span>
-    ${mine.length ? `<div class="chips">${mine.map(([k, label]) =>
-      `<button type="button" class="chip" data-acc="${k}">${t(label)}</button>`).join('')}</div>` : ''}
-    ${hints ? `<small>${mine.length ? '' : `${t('None yet.')} `}${hints}</small>` : ''}</div>`;
+    <div class="chips">${mine.map(([k, label]) =>
+      `<button type="button" class="chip" data-acc="${k}">${t(label)}</button>`).join('')}</div></div>`;
 }
 
 const NO_UNLOCKS: Unlocks = { eyepatch: false, hand: false, crown: false, bigCrown: false };

@@ -176,7 +176,6 @@ export const it: Record<string, string> = {
   'Nobody yet. Add a friend by their username to see how they are doing.':
     'Ancora nessuno. Aggiungi un amico con il suo nome utente per vedere come se la cava.',
   'None': 'Nessuno',
-  'None yet.': 'Ancora nessuno.',
   'Not started · runs for {0}': 'Non iniziata · dura {0}',
   'Not started · waiting for 1 invited chicken': 'Non iniziata · in attesa di 1 pollo invitato',
   'Not started · waiting for {0} invited chickens': 'Non iniziata · in attesa di {0} polli invitati',
@@ -196,7 +195,6 @@ export const it: Record<string, string> = {
     'Aprire un’aia significa che il tuo pollo entra. Se in quel momento qualcun altro sta mangiando, <strong>perde tutto quel pasto</strong>.',
   'Opening the coop…': 'Apro il pollaio…',
   'or': 'oppure',
-  'Other languages hide more.': 'Altre lingue nascondono altro.',
   'Others join with the yard’s code or invite link. A yard holds up to {0} chickens.':
     'Gli altri entrano con il codice dell’aia o il link d’invito. Un’aia ospita fino a {0} polli.',
   'Password': 'Password',
@@ -310,8 +308,6 @@ export const it: Record<string, string> = {
   'Walking to the yard…': 'Vado verso l’aia…',
   'Wattle': 'Bargigli',
   'While you were away': 'Mentre non c’eri',
-  'Win 10 yards for a grand crown.': 'Vinci 10 aie per una gran corona.',
-  'Win a yard to earn a crown.': 'Vinci un’aia per guadagnarti una corona.',
   'Winner': 'Vincitore',
   'With <strong>Wait for everyone</strong>, the game only starts once every invited chicken has answered, and the clock starts then.':
     'Con <strong>Aspetta tutti</strong>, il gioco inizia solo quando ogni pollo invitato ha risposto, e il tempo parte da lì.',

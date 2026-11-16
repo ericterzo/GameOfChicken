@@ -175,7 +175,6 @@ export const pirate: Record<string, string> = {
   'Nobody yet. Add a friend by their username to see how they are doing.':
     'Nary a soul yet. Recruit a matey by their pirate name to see how they fare.',
   'None': 'None',
-  'None yet.': 'No booty yet.',
   'Not started · runs for {0}': 'Still in port · sails fer {0}',
   'Not started · waiting for 1 invited chicken': 'Still in port · waitin’ on 1 summoned bird',
   'Not started · waiting for {0} invited chickens': 'Still in port · waitin’ on {0} summoned birds',
@@ -195,7 +194,6 @@ export const pirate: Record<string, string> = {
     'Openin’ a yard means yer bird walks in. If another be eatin’ at that moment, <strong>they lose that whole meal</strong>.',
   'Opening the coop…': 'Hoistin’ the sails…',
   'or': 'or',
-  'Other languages hide more.': 'Other tongues hide more booty.',
   'Others join with the yard’s code or invite link. A yard holds up to {0} chickens.':
     'Others board with the yard’s code or summons link. A yard holds up to {0} birds.',
   'Password': 'Secret word',
@@ -308,8 +306,6 @@ export const pirate: Record<string, string> = {
   'Walking to the yard…': 'Rowin’ to the yard…',
   'Wattle': 'Wattle',
   'While you were away': 'While ye were ashore',
-  'Win 10 yards for a grand crown.': 'Plunder 10 yards fer the Pirate King’s crown.',
-  'Win a yard to earn a crown.': 'Plunder a yard to earn a crown.',
   'Winner': 'Top bird',
   'With <strong>Wait for everyone</strong>, the game only starts once every invited chicken has answered, and the clock starts then.':
     'With <strong>Wait fer all hands</strong>, the game only sets sail once every summoned bird has answered, and the hourglass turns then.',
