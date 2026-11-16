@@ -67,14 +67,9 @@ function eyepatch(): string {
     <path d="M68 26.4 L78.4 28.4 Q79 36.4 73 37 Q67.2 35.4 68 26.4 z" fill="${black}" stroke="${black}" stroke-width="1" stroke-linejoin="round"/>`;
 }
 
-/** The pinched-fingers hand, held up in front of the chest. */
+/** The pinched-fingers hand 🤌, its wrist resting on the chest. It hinges there (see .ck-hand). */
 function hand(): string {
-  const a = `fill="#ffcf5c" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"`;
-  return `<g class="ck-hand">
-    <path ${a} d="M83.4 74 L83 69.5 Q79.4 65 82 59.6 Q83 54.4 85.3 53.4 Q86.4 50.6 88 53 Q89.6 50.6 90.7 53.4 Q93 54.4 94 59.6 Q96.6 65 93 69.5 L92.6 74 z"/>
-    <path d="M88 53.4 V63 M85.4 54 Q85 59 86.2 63 M90.6 54 Q91 59 89.8 63 M82.6 60.4 Q81.4 64.6 84.6 67.4" fill="none" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"/>
-    <rect x="81.6" y="73" width="12.8" height="6" rx="1.5" fill="#fff" stroke="${INK}" stroke-width="1.8"/>
-  </g>`;
+  return `<text class="ck-hand" x="65" y="75.5" font-size="19" font-family="'Apple Color Emoji','Noto Color Emoji','Segoe UI Emoji',sans-serif">🤌</text>`;
 }
 
 /**
