@@ -249,4 +249,38 @@ describe('yards', () => {
     await assertFails(updateDoc(mine, { text: 'moo' }));
     await assertFails(deleteDoc(mine));
   });
+
+  it('lets a member add a closed yard to every member\'s record, once and truthfully', async () => {
+    const y = join(freshYard(), 'ben', 'Ben', look, Date.now());
+    y.members.anna.points = 40;
+    y.members.ben.points = 10;
+    const done = settle(y, y.endsAt + 1);
+    await seed(done);
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const stats = { gamesPlayed: 2, wins: 1, totalPoints: 100 };
+      await setDoc(doc(ctx.firestore(), 'users/anna'), { username: 'Anna', stats });
+      await setDoc(doc(ctx.firestore(), 'users/ben'), { username: 'Ben', stats });
+      await setDoc(doc(ctx.firestore(), 'users/carl'), { username: 'Carl', stats });
+    });
+    const claim = (actor: string, uid: string, stats: object, mark = true) => {
+      const db = dbFor(actor);
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'users', uid), { stats, claimedYard: 'y1' });
+      if (mark) batch.update(doc(db, 'yards/y1'), { claimedUids: [uid] });
+      return batch.commit();
+    };
+    const bens = { gamesPlayed: 3, wins: 1, losses: 2, totalPoints: 110, feedStolen: 0, feedLost: 0 };
+    await assertFails(claim('carl', 'ben', bens)); // not in the yard
+    await assertFails(claim('anna', 'carl', bens)); // nor is Carl
+    await assertFails(claim('anna', 'ben', { ...bens, wins: 2 })); // Ben did not win
+    await assertFails(claim('anna', 'ben', { ...bens, totalPoints: 999 }));
+    await assertFails(claim('anna', 'ben', bens, false)); // must be noted on the yard
+    await assertFails(updateDoc(doc(dbFor('anna'), 'users/ben'), { stats: bens, claimedYard: 'y1', username: 'Loser' }));
+    await assertSucceeds(claim('anna', 'ben', bens));
+    await assertFails(claim('anna', 'ben', { ...bens, gamesPlayed: 4, totalPoints: 120 })); // only once
+    // Names are never taken off the list, and it cannot be touched while a yard runs.
+    await assertFails(updateDoc(doc(dbFor('ben'), 'yards/y1'), { claimedUids: [] }));
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'yards/y2'), y); });
+    await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y2'), { claimedUids: ['ben'] }));
+  });
 });

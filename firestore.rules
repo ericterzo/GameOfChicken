@@ -50,6 +50,23 @@ service cloud.firestore {
                 // ...and the old name is released in the same step (unless only the capitals changed).
                 && (request.resource.data.username.lower() == resource.data.username.lower()
                     || !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.username.lower())))));
+      // When a yard closes, any member adds its result to every member's record:
+      // only that, only once per yard (the yard notes who has been counted, in the
+      // same step), and only what the yard's final scores say.
+      function claimYard() { return get(/databases/$(database)/documents/yards/$(request.resource.data.claimedYard)).data; }
+      function claimYardAfter() { return getAfter(/databases/$(database)/documents/yards/$(request.resource.data.claimedYard)).data; }
+      allow update: if signedIn() && uid != me()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats', 'claimedYard'])
+        && claimYard().status == 'finished'
+        && claimYard().memberUids.size() >= 2
+        && me() in claimYard().memberUids
+        && uid in claimYard().memberUids
+        && claimYard().members[uid].statsClaimed != true
+        && !(uid in claimYard().get('claimedUids', []))
+        && uid in claimYardAfter().claimedUids
+        && request.resource.data.stats.gamesPlayed == resource.data.stats.gamesPlayed + 1
+        && request.resource.data.stats.wins == resource.data.stats.wins + (uid in claimYard().winnerUids ? 1 : 0)
+        && request.resource.data.stats.totalPoints == resource.data.stats.totalPoints + claimYard().members[uid].points;
       // Deleting the account must release its name in the same step.
       allow delete: if signedIn() && uid == me()
         && !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.username.lower()));
@@ -70,7 +87,7 @@ service cloud.firestore {
 
       function settingsUnchanged() {
         return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
-                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt'])
+                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids'])
           && clockOk()
           && !(after().status == 'waiting' && before().status != 'waiting');
       }
@@ -119,6 +136,12 @@ service cloud.firestore {
           && !startsMeal();
       }
       // Once finished, a member may only touch their own entry, never scores.
+      // Who has had the result added to their record: only noted once the yard is
+      // over, and names are never taken off the list.
+      function claimsOk() {
+        return after().get('claimedUids', []) == before().get('claimedUids', [])
+          || (before().status == 'finished' && after().claimedUids.hasAll(before().get('claimedUids', [])));
+      }
       function frozenOk() {
         return before().status != 'finished' || (
           after().status == 'finished'
@@ -152,7 +175,8 @@ service cloud.firestore {
         && settingsUnchanged()
         && (memberMove() || joining() || declining())
         && mealOk()
-        && frozenOk();
+        && frozenOk()
+        && claimsOk();
 
       // The yard's notice board: notes from members and a log of what happened.
       // Lines are only ever added, by members, in their own name and not post-dated.

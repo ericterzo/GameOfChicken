@@ -26,6 +26,9 @@ export interface Member {
   lastSeen: number;
   mealsLost: number;
   mealsStolen: number;
+  /** Feed taken from others by catching them, and feed lost by being caught. Absent on older yards. */
+  feedStolen?: number;
+  feedLost?: number;
   statsClaimed: boolean;
 }
 
@@ -69,6 +72,8 @@ export interface Yard {
   /** Username of everyone ever invited, for display. */
   invitedNames?: Record<string, string>;
   declinedUids?: string[];
+  /** Members whose result has been added to their lifetime record (see claimStats in api.ts). */
+  claimedUids?: string[];
 }
 
 export interface InterruptEvent {
@@ -230,7 +235,9 @@ export function touch(yard: Yard, uid: string, now: number): Result {
       const gained = Math.min(Math.floor(lost / STEAL_DIVISOR), roomLeft(y, uid));
       y.members[uid].points += gained;
       y.members[uid].mealsStolen += 1;
+      y.members[uid].feedStolen = (y.members[uid].feedStolen ?? 0) + gained;
       y.members[e.uid].mealsLost += 1;
+      y.members[e.uid].feedLost = (y.members[e.uid].feedLost ?? 0) + lost;
       y.eating = null;
       interrupted = { victimUid: e.uid, byUid: uid, pointsLost: lost, pointsGained: gained };
       finishIfOver(y, now);
@@ -435,6 +442,73 @@ export function mealEvents(before: Yard, after: Yard, now: number): BoardEvent[]
 /** A yard only counts towards lifetime records if at least two chickens joined it. */
 export function countsForRecords(yard: Yard): boolean {
   return yard.memberUids.length >= 2;
+}
+
+// ---------- records ----------
+
+/** A player's record: lifetime, or what one yard adds to it. */
+export interface Tally {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  biggestChicken: number;
+  totalPoints: number;
+  feedStolen: number;
+  feedLost: number;
+  mealsStolen: number;
+  mealsLost: number;
+}
+
+export const EMPTY_TALLY: Tally = {
+  gamesPlayed: 0, wins: 0, losses: 0, biggestChicken: 0, totalPoints: 0, feedStolen: 0, feedLost: 0, mealsStolen: 0, mealsLost: 0,
+};
+
+export function addTally(a: Tally, b: Tally): Tally {
+  return {
+    gamesPlayed: a.gamesPlayed + b.gamesPlayed,
+    wins: a.wins + b.wins,
+    losses: a.losses + b.losses,
+    biggestChicken: Math.max(a.biggestChicken, b.biggestChicken),
+    totalPoints: a.totalPoints + b.totalPoints,
+    feedStolen: a.feedStolen + b.feedStolen,
+    feedLost: a.feedLost + b.feedLost,
+    mealsStolen: a.mealsStolen + b.mealsStolen,
+    mealsLost: a.mealsLost + b.mealsLost,
+  };
+}
+
+/**
+ * What this yard adds to `uid`'s record as things stand at `now`. A yard still
+ * running counts as played, with the feed so far, but is not yet won or lost.
+ */
+export function yardTally(yard: Yard, uid: string, now: number): Tally {
+  const m = yard.members[uid];
+  if (!m || yard.status === 'waiting' || !countsForRecords(yard)) return EMPTY_TALLY;
+  const over = yard.status === 'finished';
+  const won = over && yard.winnerUids.includes(uid);
+  const points = livePoints(yard, uid, now);
+  return {
+    gamesPlayed: 1,
+    wins: won ? 1 : 0,
+    losses: over && !won ? 1 : 0,
+    biggestChicken: points,
+    totalPoints: points,
+    feedStolen: m.feedStolen ?? 0,
+    feedLost: m.feedLost ?? 0,
+    mealsStolen: m.mealsStolen,
+    mealsLost: m.mealsLost,
+  };
+}
+
+/** Everyone's running total from yards that are not closed yet. */
+export function liveTallies(yards: Yard[], now: number): Record<string, Tally> {
+  const out: Record<string, Tally> = {};
+  for (const raw of yards) {
+    if (raw.status !== 'active') continue;
+    const y = settle(raw, now);
+    for (const uid of y.memberUids) out[uid] = addTally(out[uid] ?? EMPTY_TALLY, yardTally(y, uid, now));
+  }
+  return out;
 }
 
 // ---------- display helpers ----------

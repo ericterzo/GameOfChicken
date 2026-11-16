@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, sizeFor, startEating, startNow, stopEating, touch, whyCannotEat,
+  countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
+  RuleError, settle, sizeFor, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -424,5 +424,28 @@ describe('notice board events', () => {
     expect(mealEvents(before, r.yard, s(90))).toEqual([{ kind: 'caught', uid: 'b', victimUid: 'a', lost: 90, taken: 30, at: s(90) }]);
     // Nothing more to say about the yard afterwards.
     expect(mealEvents(r.yard, touch(r.yard, 'a', s(95)).yard, s(95))).toEqual([]);
+  });
+});
+
+describe('records', () => {
+  it('tracks feed stolen and feed lost, and counts a running yard as played', () => {
+    let y = leave(startEating(yard(), 'a', s(0), 600).yard, 'a');
+    y = touch(y, 'b', s(90)).yard; // Ben catches Anna: she loses 90, he takes 30
+    expect(y.members.a.feedLost).toBe(90);
+    expect(y.members.b.feedStolen).toBe(30);
+    expect(yardTally(y, 'b', s(100))).toMatchObject({ gamesPlayed: 1, wins: 0, losses: 0, totalPoints: 30, feedStolen: 30, feedLost: 0 });
+    expect(liveTallies([y], s(100)).a).toMatchObject({ gamesPlayed: 1, wins: 0, losses: 0, totalPoints: 0, feedLost: 90 });
+    // A meal in progress is feed eaten so far.
+    y = startEating(leave(y, 'b'), 'a', s(200), 60).yard;
+    expect(liveTallies([y], s(220)).a.totalPoints).toBe(20);
+  });
+
+  it('settles wins and losses once the yard is over, and ignores solo and waiting yards', () => {
+    let y = leave(startEating(yard(), 'a', s(0), 60).yard, 'a');
+    y = settle(y, s(24 * HOUR + 1));
+    expect(yardTally(y, 'a', s(24 * HOUR + 1))).toMatchObject({ gamesPlayed: 1, wins: 1, losses: 0, totalPoints: 60 });
+    expect(yardTally(y, 'b', s(24 * HOUR + 1))).toMatchObject({ gamesPlayed: 1, wins: 0, losses: 1 });
+    const solo = createYard({ name: 'Solo', mode: 'sundown', goal: null, endsAt: s(HOUR), hardcore: false, sleep: null }, 'a', 'Anna', look, 'SOLO11', T0);
+    expect(liveTallies([solo], s(10))).toEqual({ a: expect.objectContaining({ gamesPlayed: 0 }) });
   });
 });

@@ -1,6 +1,6 @@
 import type { Screen } from '../app';
 import {
-  claimStats, declineInvite, finalizeYard, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
+  claimStats, declineInvite, finalizeYard, hasUnclaimed, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
   type InboxMessage, type YardDoc,
 } from '../api';
 import { countsForRecords, MODE_NAMES, settle } from '../game/rules';
@@ -114,7 +114,7 @@ export const homeScreen: Screen = (root, app) => {
       if (inFlight.has(y.id)) continue;
       let job: Promise<void> | null = null;
       if (y.status === 'active' && settle(y, now).status === 'finished') job = finalizeYard(y.id);
-      else if (y.status === 'finished' && !y.members[uid]?.statsClaimed) job = claimStats(uid, y.id);
+      else if (hasUnclaimed(y)) job = claimStats(y.id);
       if (job) {
         inFlight.add(y.id);
         void job.finally(() => inFlight.delete(y.id));

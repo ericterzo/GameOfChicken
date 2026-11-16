@@ -2,7 +2,7 @@
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
 import {
-  leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  claimStats, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
@@ -30,6 +30,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   let lastBoard = '';
   let wake: WakeLockSentinel | null = null;
   let beat = 0;
+  let claiming = false;
 
   root.innerHTML = `
     <section class="yard">
@@ -354,6 +355,11 @@ export const yardScreen: Screen = (root, app, [id]) => {
       void enter();
     }
     void syncWakeLock();
+    // The yard is over: write everyone's result into their record straight away.
+    if (hasUnclaimed(next) && !claiming) {
+      claiming = true;
+      void claimStats(id).finally(() => { claiming = false; });
+    }
     paint();
   });
 

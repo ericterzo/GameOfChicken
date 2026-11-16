@@ -12,16 +12,9 @@ import {
 import { auth, db } from './firebase';
 import { t } from './i18n';
 import * as rules from './game/rules';
-import type { Look, NewYard, Result, Yard } from './game/rules';
+import type { Look, NewYard, Result, Tally, Yard } from './game/rules';
 
-export interface Stats {
-  gamesPlayed: number;
-  wins: number;
-  biggestChicken: number;
-  totalPoints: number;
-  mealsLost: number;
-  mealsStolen: number;
-}
+export type Stats = Tally;
 
 export interface Profile {
   uid: string;
@@ -70,9 +63,7 @@ export const DEFAULT_LOOK: Look = {
   body: '#ffffff', beak: 'short', beakColor: '#f5a623', comb: 'classic', combColor: '#d93025',
 };
 
-const EMPTY_STATS: Stats = {
-  gamesPlayed: 0, wins: 0, biggestChicken: 0, totalPoints: 0, mealsLost: 0, mealsStolen: 0,
-};
+const EMPTY_STATS: Stats = rules.EMPTY_TALLY;
 
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 // Sign-in uses Firebase email/password; players only ever see a username.
@@ -182,6 +173,13 @@ export function onUser(cb: (uid: string | null) => void): () => void {
   return onAuthStateChanged(auth, (u) => cb(u ? u.uid : null));
 }
 
+/** Records saved before losses were counted: every yard played and not won was lost. */
+function readStats(saved: Partial<Stats> | undefined): Stats {
+  const st = { ...EMPTY_STATS, ...saved };
+  if (saved?.losses == null) st.losses = Math.max(0, st.gamesPlayed - st.wins);
+  return st;
+}
+
 function toProfile(uid: string, data: Record<string, unknown>): Profile {
   return {
     uid,
@@ -189,7 +187,7 @@ function toProfile(uid: string, data: Record<string, unknown>): Profile {
     look: { ...DEFAULT_LOOK, ...(data.look as Look) },
     lookEverywhere: !!data.lookEverywhere,
     friends: (data.friends as string[]) ?? [],
-    stats: { ...EMPTY_STATS, ...(data.stats as Stats) },
+    stats: readStats(data.stats as Partial<Stats> | undefined),
     unlocked: (data.unlocked as string[]) ?? [],
   };
 }
@@ -203,11 +201,42 @@ export async function getProfiles(uids: string[]): Promise<Profile[]> {
   return snaps.filter((s) => s.exists()).map((s) => toProfile(s.id, s.data()!));
 }
 
-/** The top players by one column of their record (or by name), for the global leaderboard. */
-export async function getLeaderboard(key: keyof Stats | 'username', desc: boolean, count: number): Promise<Profile[]> {
-  const field = key === 'username' ? 'username' : `stats.${key}`;
-  const snap = await getDocs(query(collection(db, 'users'), orderBy(field, desc ? 'desc' : 'asc'), limit(count)));
-  return snap.docs.map((d) => toProfile(d.id, d.data()));
+let everyone: { at: number; list: Promise<Profile[]> } | null = null;
+
+/** Every player in the game. Kept for half a minute so searching and sorting do not re-read it. */
+export function getAllProfiles(): Promise<Profile[]> {
+  if (!everyone || Date.now() - everyone.at > 30_000) {
+    const list = getDocs(query(collection(db, 'users'), limit(2000))).then((snap) => snap.docs.map((d) => toProfile(d.id, d.data())));
+    everyone = { at: Date.now(), list };
+    list.catch(() => { everyone = null; });
+  }
+  return everyone.list;
+}
+
+/** Players whose name contains `term`, whatever the capitals. */
+export async function searchPlayers(term: string): Promise<Profile[]> {
+  const needle = term.trim().toLowerCase();
+  if (!needle) return [];
+  const all = await getAllProfiles();
+  return all
+    .filter((p) => p.username.toLowerCase().includes(needle))
+    .sort((a, b) => Number(b.username.toLowerCase().startsWith(needle)) - Number(a.username.toLowerCase().startsWith(needle))
+      || a.username.localeCompare(b.username));
+}
+
+/**
+ * The same players with their yards still running added to their records:
+ * those count as played, with the feed eaten, stolen and lost so far.
+ */
+export async function withLiveYards(profiles: Profile[]): Promise<Profile[]> {
+  let live: Record<string, Tally> = {};
+  try {
+    const snap = await getDocs(query(collection(db, 'yards'), where('status', '==', 'active')));
+    live = rules.liveTallies(snap.docs.map((d) => d.data() as Yard), Date.now());
+  } catch {
+    /* offline: lifetime records only */
+  }
+  return profiles.map((p) => (live[p.uid] ? { ...p, stats: rules.addTally(p.stats, live[p.uid]) } : p));
 }
 
 export async function saveLook(uid: string, look: Look, lookEverywhere: boolean): Promise<void> {
@@ -299,12 +328,7 @@ export async function deleteAccount(me: Profile, password: string): Promise<void
 
 // ---------- friends ----------
 
-export async function addFriend(me: Profile, username: string): Promise<void> {
-  const name = username.trim().toLowerCase();
-  if (!name) throw new ApiError(t('Type a username.'));
-  const snap = await getDoc(doc(db, 'usernames', name));
-  if (!snap.exists()) throw new ApiError(t('No chicken is called “{0}”.', username.trim()));
-  const uid = snap.data().uid as string;
+export async function addFriendByUid(me: Profile, uid: string): Promise<void> {
   if (uid === me.uid) throw new ApiError(t('That is you.'));
   if (me.friends.includes(uid)) throw new ApiError(t('Already in your flock.'));
   await updateDoc(doc(db, 'users', me.uid), { friends: arrayUnion(uid) });
@@ -560,34 +584,36 @@ export async function finalizeYard(id: string): Promise<void> {
   }
 }
 
-/** Add a finished yard's result to my own lifetime stats, exactly once. */
-export async function claimStats(uid: string, yardId: string): Promise<void> {
+/** True if some member of this finished yard still has to have it added to their record. */
+export function hasUnclaimed(yard: Yard): boolean {
+  const done = yard.claimedUids ?? [];
+  return yard.status === 'finished' && yard.memberUids.some((u) => !yard.members[u].statsClaimed && !done.includes(u));
+}
+
+/**
+ * Add a finished yard's result to the lifetime record of every member, each
+ * exactly once. Whoever opens the game first does it for the whole yard, so
+ * nobody's record waits for them to come back.
+ */
+export async function claimStats(yardId: string): Promise<void> {
   try {
     await runTransaction(db, async (tx) => {
       const ySnap = await tx.get(yardRef(yardId));
-      const uSnap = await tx.get(doc(db, 'users', uid));
-      if (!ySnap.exists() || !uSnap.exists()) return;
+      if (!ySnap.exists()) return;
       const yard = ySnap.data() as Yard;
-      const m = yard.members[uid];
-      if (yard.status !== 'finished' || !m || m.statsClaimed) return;
-      if (!rules.countsForRecords(yard)) {
-        // A yard played alone is marked as dealt with but adds nothing to the record.
-        tx.update(yardRef(yardId), { [`members.${uid}.statsClaimed`]: true });
-        return;
-      }
-      const s: Stats = { ...EMPTY_STATS, ...(uSnap.data().stats as Stats) };
-      tx.update(doc(db, 'users', uid), {
-        stats: {
-          gamesPlayed: s.gamesPlayed + 1,
-          wins: s.wins + (yard.winnerUids.includes(uid) ? 1 : 0),
-          biggestChicken: Math.max(s.biggestChicken, m.points),
-          totalPoints: s.totalPoints + m.points,
-          mealsLost: s.mealsLost + m.mealsLost,
-          mealsStolen: s.mealsStolen + m.mealsStolen,
-        },
+      if (!hasUnclaimed(yard)) return;
+      const done = yard.claimedUids ?? [];
+      const pending = yard.memberUids.filter((u) => !yard.members[u].statsClaimed && !done.includes(u));
+      const users = await Promise.all(pending.map((u) => tx.get(doc(db, 'users', u))));
+      users.forEach((uSnap) => {
+        // A yard played alone adds nothing; a deleted account has no record to add to.
+        if (!uSnap.exists() || !rules.countsForRecords(yard)) return;
+        const stats = rules.addTally(readStats(uSnap.data().stats as Partial<Stats>), rules.yardTally(yard, uSnap.id, yard.endsAt));
+        tx.update(uSnap.ref, { stats, claimedYard: yardId });
       });
-      tx.update(yardRef(yardId), { [`members.${uid}.statsClaimed`]: true });
+      tx.update(yardRef(yardId), { claimedUids: [...done, ...pending] });
     });
+    everyone = null;
   } catch {
     /* try again next time the app opens */
   }
