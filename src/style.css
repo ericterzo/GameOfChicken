@@ -294,3 +294,18 @@ input:not([type='checkbox']):not([type='radio']), select {
 .bang { font-weight: 900; font-size: 18px; fill: #d93025; stroke: #fff; stroke-width: 4px; paint-order: stroke; }
 .yard-row .shot { color: var(--bad); }
 @media (prefers-reduced-motion: reduce) { .ck-flash { animation: none; } .ck-shot { animation: none; transform: rotate(-100deg); } }
+
+/* End-of-game report */
+.report h3 { margin-top: 18px; }
+.report .stat strong small { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+.awards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.awards li { border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; background: #fff; display: flex; flex-direction: column; min-width: 0; }
+.award-title { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.awards strong { overflow-wrap: anywhere; }
+.awards small { color: var(--muted); }
+.hours { display: flex; align-items: flex-end; gap: 2px; height: 72px; border-bottom: 1px solid var(--line); }
+.hour { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.hour i { display: block; width: 100%; background: #c9783a; border-radius: 4px 4px 0 0; }
+.hour:hover i { background: var(--ink); }
+.hours-axis { display: grid; grid-template-columns: repeat(4, 1fr); font-size: 0.72rem; color: var(--muted); margin: 3px 0 6px; }
+.report-lines { margin: 4px 0 10px; padding-left: 18px; font-size: 0.9rem; line-height: 1.5; }

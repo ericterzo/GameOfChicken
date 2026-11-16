@@ -473,6 +473,12 @@ export function watchBoard(yardId: string, cb: (entries: BoardEntry[]) => void):
   return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BoardEntry, 'id'>) }))), () => cb([]));
 }
 
+/** The yard's whole log, oldest first, for the end-of-game report. */
+export async function getBoardLog(yardId: string): Promise<BoardEntry[]> {
+  const snap = await getDocs(query(boardCol(yardId), orderBy('at'), limit(5000)));
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BoardEntry, 'id'>) }));
+}
+
 export const MAX_NOTE = 300;
 
 /**

@@ -2,14 +2,16 @@
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
 import {
-  claimStats, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  claimStats, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
   countsForRecords, isAsleep, isShot, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
 } from '../game/rules';
+import { yardReport } from '../game/report';
 import { chickenSvg } from '../ui/chicken';
+import { reportHtml } from '../ui/gameReport';
 import { busy, clock, dateTime, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { sceneClock, yardScene, type SceneChicken } from '../ui/yardScene';
@@ -32,6 +34,8 @@ export const yardScreen: Screen = (root, app, [id]) => {
   let beat = 0;
   let claiming = false;
   let notMember = 0;
+  let reported = false;
+  let closing = false;
 
   root.innerHTML = `
     <section class="yard">
@@ -39,6 +43,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       <div class="scene-wrap" id="scene"></div>
       <div class="card panel" id="panel"></div>
       <div class="card" id="board"></div>
+      <div class="card report" id="report" hidden></div>
       <div class="card notice" id="notice" hidden>
         <h2>${t('Notice board')}</h2>
         <form id="note-form" class="join">
@@ -351,6 +356,23 @@ export const yardScreen: Screen = (root, app, [id]) => {
     paintPanel(y, now);
     paintBoard(y, now);
     paintNotes(y, now);
+    // The game is over: work out the report from the yard's log, once.
+    // (If the clock ended it while I was watching, close it for everyone first.)
+    if (y.status === 'finished' && yard.status !== 'finished' && !closing) {
+      closing = true;
+      void finalizeYard(id).finally(() => { window.setTimeout(() => { closing = false; }, 5000); });
+    }
+    if (yard.status === 'finished' && !reported) {
+      reported = true;
+      window.setTimeout(() => void getBoardLog(id).then((log) => {
+        if (!alive || !yard) return;
+        const report = yardReport(settle(yard, Date.now()), log, (at) => new Date(at).getHours());
+        if (!report.hasLog) return; // a yard from before there was a log
+        const box = root.querySelector<HTMLElement>('#report')!;
+        box.innerHTML = reportHtml(settle(yard, Date.now()), report, uid);
+        box.hidden = false;
+      }).catch(() => { reported = false; }), 1500); // let the last meal reach the log first
+    }
   }
 
   // ----- live data -----
