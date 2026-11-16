@@ -235,3 +235,9 @@ input:not([type='checkbox']):not([type='radio']), select {
 .danger-zone { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
 .danger-zone summary { display: inline-block; list-style: none; }
 .danger-zone summary::-webkit-details-marker { display: none; }
+.notes { list-style: none; margin: 12px 0 0; padding: 0; max-height: 340px; overflow-y: auto; }
+.note { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 0.92rem; overflow-wrap: anywhere; }
+.note time { flex: none; min-width: 3.2em; color: var(--muted); font-size: 0.8rem; padding-top: 2px; }
+.note.visit, .note.ate, .note.caught { color: var(--muted); }
+.note.caught strong, .note.ate strong, .note.visit strong { color: var(--ink); }
+.notice .join input { text-transform: none; min-width: 0; }

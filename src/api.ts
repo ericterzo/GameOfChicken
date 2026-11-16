@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import {
   addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
-  runTransaction, updateDoc, where, writeBatch,
+  runTransaction, updateDoc, where, writeBatch, type Transaction,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import * as rules from './game/rules';
@@ -341,7 +341,11 @@ export async function joinYard(me: Profile, yardId: string, look: Look): Promise
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(yardRef(yardId));
       if (!snap.exists()) throw new ApiError('That yard no longer exists.');
-      tx.set(yardRef(yardId), rules.join(snap.data() as Yard, me.uid, me.username, look, Date.now()));
+      const before = snap.data() as Yard;
+      const now = Date.now();
+      const after = rules.join(before, me.uid, me.username, look, now);
+      tx.set(yardRef(yardId), after);
+      logMeals(tx, yardId, me.uid, before, after, now);
     });
   } catch (e) {
     throw friendly(e);
@@ -370,13 +374,94 @@ export function watchMyInvites(uid: string, cb: (yards: YardDoc[]) => void): () 
   });
 }
 
+// ---------- notice board ----------
+
+export interface BoardEntry {
+  id: string;
+  kind: 'chat' | 'visit' | 'ate' | 'caught';
+  at: number;
+  /** Who the line is about: the writer, the visitor, the eater or the catcher. */
+  uid: string;
+  username: string;
+  text?: string;
+  amount?: number;
+  victimUid?: string;
+  victimName?: string;
+  lost?: number;
+  taken?: number;
+}
+
+const boardCol = (yardId: string) => collection(db, 'yards', yardId, 'board');
+
+/** Inside a yard transaction: note any meal that was banked or stolen by it. */
+function logMeals(tx: Transaction, yardId: string, by: string, before: Yard, after: Yard, now: number): void {
+  for (const ev of rules.mealEvents(before, after, now)) {
+    const username = after.members[ev.uid].username;
+    tx.set(doc(boardCol(yardId)), ev.kind === 'ate'
+      ? { kind: 'ate', at: ev.at, by, uid: ev.uid, username, amount: ev.amount }
+      : {
+        kind: 'caught', at: ev.at, by, uid: ev.uid, username, victimUid: ev.victimUid,
+        victimName: after.members[ev.victimUid].username, lost: ev.lost, taken: ev.taken,
+      });
+  }
+}
+
+export function watchBoard(yardId: string, cb: (entries: BoardEntry[]) => void): () => void {
+  const q = query(boardCol(yardId), orderBy('at', 'desc'), limit(100));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BoardEntry, 'id'>) }))), () => cb([]));
+}
+
+export const MAX_NOTE = 300;
+
+export async function postNote(yardId: string, me: Profile, text: string): Promise<void> {
+  const clean = text.trim().slice(0, MAX_NOTE);
+  if (!clean) return;
+  try {
+    await addDoc(boardCol(yardId), { kind: 'chat', at: Date.now(), by: me.uid, uid: me.uid, username: me.username, text: clean });
+  } catch (e) {
+    throw friendly(e);
+  }
+}
+
+const VISIT_GAP_MS = 5 * 60 * 1000;
+
+const lastSeenHere = new Map<string, number>();
+
+/**
+ * Note that I came by. Called on every presence beat: staying in the yard, or
+ * coming back within a few minutes, counts as the same visit.
+ */
+export async function logVisit(yardId: string, me: Profile): Promise<void> {
+  const key = `visit:${yardId}:${me.uid}`;
+  const now = Date.now();
+  let last = lastSeenHere.get(key) ?? 0;
+  try {
+    last = Math.max(last, Number(localStorage.getItem(key) ?? 0));
+    localStorage.setItem(key, String(now));
+  } catch {
+    /* no storage (private window): this tab's memory will do */
+  }
+  lastSeenHere.set(key, now);
+  if (now - last < VISIT_GAP_MS) return;
+  try {
+    await addDoc(boardCol(yardId), { kind: 'visit', at: now, by: me.uid, uid: me.uid, username: me.username });
+  } catch {
+    /* the board is a nicety; the visit itself still counts */
+  }
+}
+
 /** Apply a rule that changes the yard without anyone walking in. */
 async function change(yardId: string, fn: (y: Yard, now: number) => Yard): Promise<void> {
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(yardRef(yardId));
       if (!snap.exists()) throw new ApiError('That yard no longer exists.');
-      tx.set(yardRef(yardId), fn(snap.data() as Yard, Date.now()));
+      const before = snap.data() as Yard;
+      const now = Date.now();
+      const after = fn(before, now);
+      tx.set(yardRef(yardId), after);
+      const by = auth.currentUser?.uid;
+      if (by && after.members[by]) logMeals(tx, yardId, by, before, after, now);
     });
   } catch (e) {
     throw friendly(e);
@@ -398,6 +483,7 @@ async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Re
       const now = Date.now();
       const result = fn(before, now);
       tx.set(yardRef(yardId), result.yard);
+      logMeals(tx, yardId, uid, before, result.yard, now);
       const hit = result.interrupted;
       if (hit) {
         tx.set(doc(collection(db, 'users', hit.victimUid, 'inbox')), {
@@ -440,8 +526,12 @@ export async function finalizeYard(id: string): Promise<void> {
       if (!snap.exists()) return;
       const before = snap.data() as Yard;
       if (before.status === 'finished') return;
-      const after = rules.settle(before, Date.now());
-      if (after.status === 'finished') tx.set(yardRef(id), after);
+      const now = Date.now();
+      const after = rules.settle(before, now);
+      if (after.status !== 'finished') return;
+      tx.set(yardRef(id), after);
+      const by = auth.currentUser?.uid;
+      if (by && after.members[by]) logMeals(tx, id, by, before, after, now);
     });
   } catch {
     /* someone else will do it */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, maxMealSeconds, nextSleepStart, pileFraction,
+  countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
   RuleError, settle, sizeFor, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
@@ -401,5 +401,28 @@ describe('yard setup', () => {
     expect(y.status).toBe('finished');
     expect(() => startEating(y, 'a', s(2 * HOUR), 10)).toThrow(/closed/);
     expect(() => join(y, 'c', 'Cy', look, s(2 * HOUR))).toThrow(/closed/);
+  });
+});
+
+describe('notice board events', () => {
+  it('notes a meal that ran its course, at the time it ended', () => {
+    const before = leave(startEating(yard(), 'a', s(0), 60).yard, 'a');
+    expect(mealEvents(before, settle(before, s(30)), s(30))).toEqual([]);
+    expect(mealEvents(before, settle(before, s(500)), s(500))).toEqual([{ kind: 'ate', uid: 'a', amount: 60, at: s(60) }]);
+  });
+
+  it('notes a meal stopped early, and a new meal started after an old one ran out', () => {
+    const before = startEating(yard(), 'a', s(0), 60).yard;
+    expect(mealEvents(before, stopEating(before, 'a', s(20)).yard, s(20))).toEqual([{ kind: 'ate', uid: 'a', amount: 20, at: s(20) }]);
+    const again = startEating(leave(before, 'a'), 'a', s(100), 30).yard;
+    expect(mealEvents(before, again, s(100))).toEqual([{ kind: 'ate', uid: 'a', amount: 60, at: s(60) }]);
+  });
+
+  it('notes who caught whom, what was lost and what was taken', () => {
+    const before = leave(startEating(yard(), 'a', s(0), 600).yard, 'a');
+    const r = touch(before, 'b', s(90));
+    expect(mealEvents(before, r.yard, s(90))).toEqual([{ kind: 'caught', uid: 'b', victimUid: 'a', lost: 90, taken: 30, at: s(90) }]);
+    // Nothing more to say about the yard afterwards.
+    expect(mealEvents(r.yard, touch(r.yard, 'a', s(95)).yard, s(95))).toEqual([]);
   });
 });

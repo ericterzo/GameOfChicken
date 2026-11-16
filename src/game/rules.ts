@@ -397,6 +397,37 @@ export function createYard(
   };
 }
 
+// ---------- notice board ----------
+
+/** Something worth writing on the yard's notice board. */
+export type BoardEvent =
+  | { kind: 'ate'; uid: string; amount: number; at: number }
+  | { kind: 'caught'; uid: string; victimUid: string; lost: number; taken: number; at: number };
+
+/**
+ * What happened to the meal that was on the table in `before`, judged by
+ * comparing it with the yard after any rule was applied at `now`: the eater
+ * was caught, or the meal ended and was banked.
+ */
+export function mealEvents(before: Yard, after: Yard, now: number): BoardEvent[] {
+  const e = before.eating;
+  if (!e || (after.eating && after.eating.startedAt === e.startedAt)) return [];
+  const was = before.members[e.uid];
+  const is = after.members[e.uid];
+  if (!was || !is) return [];
+  if (is.mealsLost > was.mealsLost) {
+    const thief = Object.keys(after.members).find(
+      (u) => after.members[u].mealsStolen > (before.members[u]?.mealsStolen ?? 0),
+    );
+    if (!thief) return [];
+    const taken = after.members[thief].points - (before.members[thief]?.points ?? 0);
+    return [{ kind: 'caught', uid: thief, victimUid: e.uid, lost: mealPoints(before, now), taken, at: now }];
+  }
+  const amount = is.points - was.points;
+  if (amount <= 0) return [];
+  return [{ kind: 'ate', uid: e.uid, amount, at: Math.min(now, mealEnd(before, now)) }];
+}
+
 /** A yard only counts towards lifetime records if at least two chickens joined it. */
 export function countsForRecords(yard: Yard): boolean {
   return yard.memberUids.length >= 2;

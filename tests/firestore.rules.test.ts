@@ -4,7 +4,9 @@ import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import {
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch,
+} from 'firebase/firestore';
 import {
   createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
 } from '../src/game/rules';
@@ -217,5 +219,34 @@ describe('yards', () => {
     await assertSucceeds(updateDoc(doc(dbFor('anna'), 'yards/y1'), { 'members.anna.statsClaimed': true }));
     await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y1'), { 'members.anna.points': 4000 }));
     await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y1'), { status: 'active' }));
+  });
+
+  it('keeps the notice board to members, in their own name', async () => {
+    const y = join(freshYard(), 'ben', 'Ben', look, Date.now());
+    await seed(y);
+    const at = Date.now();
+    const board = (uid: string) => collection(dbFor(uid), 'yards/y1/board');
+    const note = { kind: 'chat', at, by: 'anna', uid: 'anna', username: 'Anna', text: 'cluck' };
+    await assertSucceeds(addDoc(board('anna'), note));
+    await assertSucceeds(addDoc(board('anna'), { kind: 'visit', at, by: 'anna', uid: 'anna', username: 'Anna' }));
+    // A meal Ben finished long ago may be noted by whoever notices it.
+    await assertSucceeds(addDoc(board('anna'), { kind: 'ate', at: at - 3600_000, by: 'anna', uid: 'ben', username: 'Ben', amount: 60 }));
+    await assertSucceeds(addDoc(board('ben'), {
+      kind: 'caught', at, by: 'ben', uid: 'ben', username: 'Ben', victimUid: 'anna', victimName: 'Anna', lost: 30, taken: 10,
+    }));
+    await assertSucceeds(getDocs(board('ben')));
+    // Not for outsiders, not in someone else's name, not empty or endless, not from the future.
+    await assertFails(getDocs(board('carl')));
+    await assertFails(addDoc(board('carl'), { ...note, by: 'carl', uid: 'carl' }));
+    await assertFails(addDoc(board('ben'), note));
+    await assertFails(addDoc(board('ben'), { ...note, by: 'ben' }));
+    await assertFails(addDoc(board('anna'), { ...note, text: '' }));
+    await assertFails(addDoc(board('anna'), { ...note, text: 'x'.repeat(301) }));
+    await assertFails(addDoc(board('anna'), { ...note, at: at + 3600_000 }));
+    await assertFails(addDoc(board('anna'), { ...note, extra: 1 }));
+    // Lines are never changed or removed.
+    const mine = await addDoc(board('anna'), note);
+    await assertFails(updateDoc(mine, { text: 'moo' }));
+    await assertFails(deleteDoc(mine));
   });
 });

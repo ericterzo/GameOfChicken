@@ -153,6 +153,33 @@ service cloud.firestore {
         && (memberMove() || joining() || declining())
         && mealOk()
         && frozenOk();
+
+      // The yard's notice board: notes from members and a log of what happened.
+      // Lines are only ever added, by members, in their own name and not post-dated.
+      match /board/{entryId} {
+        function entry() { return request.resource.data; }
+        allow read: if signedIn()
+          && me() in get(/databases/$(database)/documents/yards/$(yardId)).data.memberUids;
+        allow create: if signedIn()
+          && me() in getAfter(/databases/$(database)/documents/yards/$(yardId)).data.memberUids
+          && entry().by == me()
+          && entry().at is number && entry().at < nowMs() + slack()
+          && entry().username is string
+          && (
+            (entry().kind == 'chat'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'text'])
+              && entry().uid == me() && entry().at > nowMs() - slack()
+              && entry().text is string && entry().text.size() > 0 && entry().text.size() <= 300)
+            || (entry().kind == 'visit'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username'])
+              && entry().uid == me() && entry().at > nowMs() - slack())
+            || (entry().kind == 'ate'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'amount']))
+            || (entry().kind == 'caught'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'lost', 'taken'])
+              && entry().uid == me())
+          );
+      }
     }
   }
 }

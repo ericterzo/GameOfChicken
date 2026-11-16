@@ -1,7 +1,10 @@
 // The yard itself. Having this screen open and visible means "my chicken is in
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
-import { leaveYard, startEating, startYardNow, stopEating, touchYard, watchYard, type YardDoc } from '../api';
+import {
+  leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  type BoardEntry, type YardDoc,
+} from '../api';
 import {
   countsForRecords, isAsleep, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
@@ -33,11 +36,24 @@ export const yardScreen: Screen = (root, app, [id]) => {
       <div class="scene-wrap" id="scene"></div>
       <div class="card panel" id="panel"></div>
       <div class="card" id="board"></div>
+      <div class="card notice" id="notice" hidden>
+        <h2>Notice board</h2>
+        <form id="note-form" class="join">
+          <input name="text" maxlength="${MAX_NOTE}" placeholder="Leave a note for the flock" autocomplete="off" aria-label="Leave a note for the flock">
+          <button class="btn" type="submit">Post</button>
+        </form>
+        <ol class="notes" id="notes"></ol>
+      </div>
     </section>`;
   const head = root.querySelector<HTMLElement>('.yard-head')!;
   const scene = root.querySelector<HTMLElement>('#scene')!;
   const panel = root.querySelector<HTMLElement>('#panel')!;
   const board = root.querySelector<HTMLElement>('#board')!;
+
+  const notice = root.querySelector<HTMLElement>('#notice')!;
+  const notes = root.querySelector<HTMLElement>('#notes')!;
+  let entries: BoardEntry[] = [];
+  let lastNotes = '';
 
   const iAmEating = () => yard?.eating?.uid === uid;
 
@@ -47,6 +63,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (!alive || touching || document.hidden || !yard || yard.status === 'finished') return;
     touching = true;
     try {
+      void logVisit(id, app.profile); // before walking in, so it reads ahead of any catch
       const r = await touchYard(id, uid);
       const hit = r.interrupted;
       if (hit) {
@@ -158,6 +175,27 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (html === lastBoard) return;
     lastBoard = html;
     board.innerHTML = html;
+  }
+
+  /** The notice board: notes from the flock and what happened in the yard, newest first. */
+  function paintNotes(y: Yard, now: number): void {
+    // Names follow the yard, so a renamed chicken reads right in old lines too.
+    const name = (u: string | undefined, saved: string | undefined) => esc((u && y.members[u]?.username) || saved || 'A chicken');
+    const today = new Date(now).toDateString();
+    const when = (t: number) => (new Date(t).toDateString() === today ? clock(t) : dateTime(t));
+    const line = (e: BoardEntry): string => {
+      const who = `<strong>${name(e.uid, e.username)}</strong>`;
+      if (e.kind === 'chat') return `${who}: ${esc(e.text ?? '')}`;
+      if (e.kind === 'visit') return `${who} was here.`;
+      if (e.kind === 'ate') return `${who} finished a meal of ${num(e.amount ?? 0)} feed.`;
+      return `${who} caught <strong>${name(e.victimUid, e.victimName)}</strong> eating and took ${num(e.taken ?? 0)} of their ${num(e.lost ?? 0)} feed.`;
+    };
+    const html = entries.length
+      ? entries.map((e) => `<li class="note ${e.kind}"><time>${esc(when(e.at))}</time><span>${line(e)}</span></li>`).join('')
+      : '<li class="muted">Nothing yet. Notes and yard news show up here.</li>';
+    if (html === lastNotes) return;
+    lastNotes = html;
+    notes.innerHTML = html;
   }
 
   /** Rebuild the action panel only when its kind changes, so taps and typing survive the clock. */
@@ -281,6 +319,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     paintScene(y, now);
     paintPanel(y, now);
     paintBoard(y, now);
+    paintNotes(y, now);
   }
 
   // ----- live data -----
@@ -294,6 +333,10 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (!next.members[uid]) { app.go(`#/join/${next.joinCode}`); return; }
     const prev = yard;
     yard = next;
+    if (!stopBoard) {
+      notice.hidden = false;
+      stopBoard = watchBoard(id, (list) => { entries = list; paint(); });
+    }
     if (prev && next.members[uid].mealsLost > prev.members[uid].mealsLost) {
       toast('Caught! Another chicken walked in and your meal is gone.', 'bad');
     }
@@ -309,12 +352,24 @@ export const yardScreen: Screen = (root, app, [id]) => {
     paint();
   });
 
+  let stopBoard: (() => void) | null = null;
+  const noteForm = root.querySelector<HTMLFormElement>('#note-form')!;
+  noteForm.onsubmit = (e) => {
+    e.preventDefault();
+    const input = noteForm.elements.namedItem('text') as HTMLInputElement;
+    void busy(noteForm.querySelector('button'), async () => {
+      await postNote(id, app.profile, input.value);
+      input.value = '';
+    });
+  };
+
   const tick = window.setInterval(paint, 500);
 
   return () => {
     void walkOut();
     alive = false;
     stopWatching();
+    stopBoard?.();
     clearInterval(tick);
     clearInterval(beat);
     document.removeEventListener('visibilitychange', onVisibility);
