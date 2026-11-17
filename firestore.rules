@@ -100,7 +100,7 @@ service cloud.firestore {
       function settingsUnchanged() {
         return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
                                   'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids', 'shot',
-                                  'duel', 'pact', 'caught', 'shout', 'feast', 'fox', 'foxSeen'])
+                                  'duel', 'pact', 'caught', 'shout', 'feast', 'fox', 'foxSeen', 'showdown'])
           && clockOk()
           && !(after().status == 'waiting' && before().status != 'waiting');
       }
@@ -199,13 +199,25 @@ service cloud.firestore {
           || (before().status == 'finished' && after().claimedUids.hasAll(before().get('claimedUids', [])));
       }
       function frozenOk() {
-        return before().status != 'finished' || (
+        return before().status != 'finished' || showdownWin() || (
           after().status == 'finished'
           && after().winnerUids == before().winnerUids
+          && after().get('showdown', null) == before().get('showdown', null)
           && after().eating == null
           && after().members.diff(before().members).affectedKeys().hasOnly([me()])
           && after().members[me()].points == before().members[me()].points
         );
+      }
+      // A tie's final standoff: one of the tied chickens, within the week, wins it outright, and that is all.
+      function showdownWin() {
+        return before().get('showdown', null) != null
+          && before().showdown.get('winner', null) == null
+          && me() in before().showdown.uids
+          && nowMs() - before().showdown.at < 7 * 24 * 3600 * 1000
+          && after().diff(before()).affectedKeys().hasOnly(['winnerUids', 'showdown', 'shot'])
+          && after().winnerUids == [me()]
+          && after().showdown.winner == me()
+          && after().showdown.uids == before().showdown.uids;
       }
 
       allow read: if signedIn();
@@ -272,7 +284,7 @@ service cloud.firestore {
               && entry().uid == me() && entry().at < nowMs() + slack())
             || (entry().kind == 'duel'
               && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'outcome'])
-              && entry().outcome in ['allied', 'fought', 'brawl']
+              && entry().outcome in ['allied', 'fought', 'brawl', 'showdown']
               && (entry().uid == me() || entry().victimUid == me())
               && entry().at > nowMs() - slack())
           );

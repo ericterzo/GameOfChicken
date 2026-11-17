@@ -109,8 +109,8 @@ export const it: Record<string, string> = {
   'Chicken saved.': 'Pollo salvato.',
   'Chickens can eat side by side, and walking in does not catch anyone. There are no standoffs.':
     'I polli possono mangiare fianco a fianco, ed entrare non becca nessuno. Non ci sono stalli.',
-  'Chickens grow as they score. If the top score is shared, the win is shared.':
-    'I polli crescono man mano che fanno punti. Se il punteggio più alto è condiviso, la vittoria è condivisa.',
+  'Chickens grow as they score. If the top score is shared, it comes down to one final standoff: the first of the tied chickens to come back and shoot wins the yard outright, even if the others are not there. If none of them does within a week, the win is shared.':
+    'I polli crescono man mano che fanno punti. Se il punteggio più alto è condiviso, si decide con un ultimo stallo: il primo dei polli a pari merito che torna e spara vince l’aia, anche se gli altri non ci sono. Se nessuno lo fa entro una settimana, la vittoria è condivisa.',
   'Chickens that are dead, or out of the yard, do not count towards the whole flock.':
     'I polli morti, o fuori dall’aia, non contano per lo stormo intero.',
   'Choose in secret.': 'Scegli in segreto.',
@@ -120,6 +120,7 @@ export const it: Record<string, string> = {
   'Closed': 'Chiusa',
   'Closed · nobody ate': 'Chiusa · nessuno ha mangiato',
   'Closed · solo yard, not counted · you had {0}': 'Chiusa · aia in solitaria, non conta · avevi {0}',
+  'Closed · tied, waiting for the final standoff': 'Chiusa · pareggio, in attesa dello stallo finale',
   'Closed · won by {0} · you had {1}': 'Chiusa · vinta da {0} · avevi {1}',
   'Closes at': 'Chiude alle',
   'Closes in {0}': 'Chiude tra {0}',
@@ -186,6 +187,7 @@ export const it: Record<string, string> = {
   'Feeding as allies': 'Mangiare da alleati',
   'Fight': 'Lotta',
   'Fights won: {0}': 'Lotte vinte: {0}',
+  'Final standoff!': 'Stallo finale!',
   'First chicken to grow to the target size wins.': 'Vince il primo pollo che raggiunge la taglia stabilita.',
   'Flock': 'Stormo',
   'Flock table': 'Tabella dello stormo',
@@ -252,8 +254,8 @@ export const it: Record<string, string> = {
   'Looking for your yards…': 'Cerco le tue aie…',
   'lurking': 'in agguato',
   'Meals kept': 'Pasti tenuti',
-  'Minutes': 'Minuti',
   'minutes': 'minuti',
+  'Minutes': 'Minuti',
   'Most active around {0}': 'Più attivo intorno alle {0}',
   'Most robbed': 'Il più derubato',
   'Most time at the pile': 'Più tempo al mucchio',
@@ -304,6 +306,7 @@ export const it: Record<string, string> = {
   'Only the chicken who opened the yard can start it early.': 'Solo il pollo che ha aperto l’aia può farla partire prima.',
   'Only the meal in progress is lost. Points from meals already finished or stopped are safe for good.':
     'Si perde solo il pasto in corso. I punti dei pasti già finiti o interrotti sono al sicuro per sempre.',
+  'Only the tied chickens take part in the final standoff.': 'Allo stallo finale partecipano solo i polli a pari merito.',
   'Open a yard. If you are alone in it, choose how long to eat (at least {0} seconds) and start.':
     'Apri un’aia. Se sei da solo, scegli per quanto mangiare (almeno {0} secondi) e inizia.',
   'Open the yard': 'Apri l’aia',
@@ -345,6 +348,7 @@ export const it: Record<string, string> = {
   'Search for a chicken': 'Cerca un pollo',
   'Sharpshooter': 'Tiratore scelto',
   'Shoot': 'Spara',
+  'Shoot!': 'Spara!',
   'Short': 'Corto',
   'Shots fired: {0}': 'Colpi sparati: {0}',
   'Sign in': 'Accedi',
@@ -403,8 +407,12 @@ export const it: Record<string, string> = {
   'The chickens are asleep.': 'I polli dormono.',
   'The fighter wins the yard. The chicken who offered an alliance is thrown out for 7 minutes.':
     'Chi combatte si prende l’aia. Il pollo che ha offerto l’alleanza viene cacciato per 7 minuti.',
+  'The final standoff is already over.': 'Lo stallo finale è già finito.',
   'The first chicken to reach the target size wins at once. The pile shrinks as the biggest chicken closes in.':
     'Il primo pollo che raggiunge la taglia stabilita vince subito. Il mucchio cala man mano che il pollo più grosso si avvicina.',
+  'The first of them to come back and shoot wins the yard outright.': 'Il primo di loro che torna e spara vince l’aia.',
+  'The first of you to shoot wins the yard outright. Nobody else needs to be here.':
+    'Il primo di voi che spara vince l’aia. Non serve che gli altri siano qui.',
   'The fox burst in and caught {0}.': 'La volpe è piombata dentro e ha beccato {0}.',
   'The fox caught you.': 'Ti ha beccato la volpe.',
   'The fox caught you. You can go back in {0}.': 'Ti ha beccato la volpe. Puoi rientrare tra {0}.',
@@ -467,6 +475,8 @@ export const it: Record<string, string> = {
   'Three or more chickens: the trigger': 'Tre o più polli: il grilletto',
   'Thrown out': 'Cacciati',
   'Thrown out after offering an alliance: {0}': 'Cacciato dopo aver offerto un’alleanza: {0}',
+  'Tied! Final standoff: the first of you to come back and shoot wins.':
+    'Pareggio! Stallo finale: vince il primo di voi che torna e spara.',
   'Time feeding': 'Tempo a mangiare',
   'Times shot: {0}': 'Volte colpito: {0}',
   'Toughest fighter': 'Il più combattivo',
@@ -544,6 +554,8 @@ export const it: Record<string, string> = {
     'Puoi chiudere l’app. Il tuo pollo continua a mangiare finché il timer non scade, e a quel punto tutto il pasto è tuo.',
   'You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.':
     'Puoi chiudere l’app; il tuo pollo continua a mangiare. Chiunque entri ti porta via tutto il pasto.',
+  'You can close the app; your chicken keeps eating. You lose this meal if the whole flock is in the yard at once, or if the fox comes.':
+    'Puoi chiudere l’app; il tuo pollo continua a mangiare. Perdi questo pasto se tutto lo stormo è nell’aia insieme, o se arriva la volpe.',
   'You can invite friends from your flock when starting a yard. They accept or decline from their home screen.':
     'Quando apri un’aia puoi invitare gli amici del tuo stormo. Accettano o rifiutano dalla loro home.',
   'You can watch from the edge of the yard, but you cannot eat or catch anyone until your time is up.':
@@ -564,6 +576,7 @@ export const it: Record<string, string> = {
   'You were shot by {0}.': '{0} ti ha sparato.',
   'You were thrown out of this yard. Wait before going back in.': 'Sei stato cacciato da questa aia. Aspetta prima di rientrare.',
   'You win the yard': 'Hai vinto l’aia',
+  'You won the final standoff and the yard': 'Hai vinto lo stallo finale e l’aia',
   'Your account is deleted. Goodbye!': 'Il tuo account è stato eliminato. Addio!',
   'Your ally cannot catch you, but any other chicken who walks in can, and catches both of you if you are both eating.':
     'Il tuo alleato non può beccarti, ma qualsiasi altro pollo che entra sì, e vi becca entrambi se state mangiando tutti e due.',
@@ -603,12 +616,13 @@ export const it: Record<string, string> = {
   '{0} shot {1}.': '{0} ha sparato a {1}.',
   '{0} still has to answer. Nobody can eat until then.': '{0} deve ancora rispondere. Fino ad allora nessuno può mangiare.',
   '{0} still have to answer. Nobody can eat until then.': '{0} devono ancora rispondere. Fino ad allora nessuno può mangiare.',
+  '{0} tied for the win with {1} points.': '{0} hanno pareggiato per la vittoria con {1} punti.',
   '{0} was here.': '{0} è passato di qui.',
   '{0} win the yard': '{0}: aia vinta a pari merito',
   '{0} wins the yard': '{0} vince l’aia',
   '{0} won of {1}': '{0} vinte su {1}',
+  '{0} won the final standoff against {1}.': '{0} ha vinto lo stallo finale contro {1}.',
+  '{0} won the final standoff and the yard': '{0} ha vinto lo stallo finale e l’aia',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} di mangime)',
   '{0}: {1} of {2} in the yard.': '{0}: {1} su {2} nell’aia.',
-  'You can close the app; your chicken keeps eating. You lose this meal if the whole flock is in the yard at once, or if the fox comes.':
-    'Puoi chiudere l’app; il tuo pollo continua a mangiare. Perdi questo pasto se tutto lo stormo è nell’aia insieme, o se arriva la volpe.',
 };

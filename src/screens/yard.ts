@@ -2,11 +2,11 @@
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
 import {
-  chooseSide, claimStats, drawGun, shout, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  chooseSide, claimStats, drawGun, winShowdown, shout, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
-  allyOf, countsForRecords, duelRival, flockCount, isAsleep, isCoop, isLurking, isOut, mealOf, meals, RULESET_NAMES, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
+  allyOf, countsForRecords, duelRival, flockCount, showdownOpen, isAsleep, isCoop, isLurking, isOut, mealOf, meals, RULESET_NAMES, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
 } from '../game/rules';
 import { yardReport } from '../game/report';
@@ -274,6 +274,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       if (e.kind === 'duel') {
         if (e.outcome === 'allied') return t('{0} and {1} formed an alliance.', who, them);
         if (e.outcome === 'fought') return t('{0} fought off {1}.', who, them);
+        if (e.outcome === 'showdown') return t('{0} won the final standoff against {1}.', who, them);
         return t('{0} and {1} fought, and both were thrown out.', who, them);
       }
       if (e.kind === 'ate') return t('{0} finished a meal of {1} feed.', who, num(e.amount ?? 0));
@@ -297,12 +298,29 @@ export const yardScreen: Screen = (root, app, [id]) => {
       if (n && n.textContent !== value) n.textContent = value;
     };
 
+    // A tie: one last standoff, won by the first of the tied chickens to shoot.
+    if (showdownOpen(y, now)) {
+      const tiedNames = y.showdown!.uids.map((u) => esc(u === uid ? t('You') : y.members[u].username)).join(' & ');
+      const mineToWin = y.showdown!.uids.includes(uid);
+      set(`showdown:${mineToWin}`, `<h2>${t('Final standoff!')}</h2>
+        <p>${t('{0} tied for the win with {1} points.', tiedNames, num(y.members[y.showdown!.uids[0]].points))}</p>
+        ${mineToWin
+          ? `<p><strong>${t('The first of you to shoot wins the yard outright. Nobody else needs to be here.')}</strong></p>
+             <button class="btn primary trigger cocked" id="showdown" type="button">${t('Shoot!')}</button>`
+          : `<p class="muted">${t('The first of them to come back and shoot wins the yard outright.')}</p>`}`, () => {
+        const b = panel.querySelector<HTMLButtonElement>('#showdown');
+        if (b) b.onclick = () => void busy(b, async () => { await winShowdown(id, app.profile); });
+      });
+      return;
+    }
+
     if (y.status === 'finished') {
       const mine = y.members[uid].points;
       const iWon = y.winnerUids.includes(uid);
       const names = y.winnerUids.map((u) => (u === uid ? t('You') : y.members[u].username)).join(' & ');
       const headline = !y.winnerUids.length ? t('Nobody ate. No winner.')
         : y.winnerUids.length > 1 ? t('{0} win the yard', names)
+        : y.showdown?.winner ? (iWon ? t('You won the final standoff and the yard') : t('{0} won the final standoff and the yard', names))
         : iWon ? t('You win the yard') : t('{0} wins the yard', names);
       set(`finished:${headline}`, `<h2>${esc(headline)}</h2><p class="muted">${t('You finished with {0} points.', num(mine))} ${t(MODE_BLURBS[y.mode])}</p>
         ${countsForRecords(y) ? '' : `<p class="muted small">${t('Nobody else joined, so this yard does not count towards your record.')}</p>`}

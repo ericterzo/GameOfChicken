@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countsForRecords, createYard, totalPoints, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, shoot, sizeFor, joinHeadStart, isLurking, othersPresent, nextFox, flockCount, FOX_MIN_MS, FOX_MAX_MS, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
+  RuleError, settle, shoot, sizeFor, showdownOpen, winShowdown, SHOWDOWN_MS, joinHeadStart, isLurking, othersPresent, nextFox, flockCount, FOX_MIN_MS, FOX_MAX_MS, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -761,5 +761,38 @@ describe('cooperative rules', () => {
     expect(why(y, dead, fox + 25 * 60_000)).toBe('The fox killed your chicken. It can never eat again.');
     // The dead no longer count towards the whole flock.
     expect(flockCount(y, fox + 25 * 60_000).of).toBe(2);
+  });
+});
+
+describe('the final standoff', () => {
+  const tied = () => {
+    const y = yard();
+    y.members.a.points = 50;
+    y.members.b.points = 50;
+    return settle(y, y.endsAt + 1);
+  };
+
+  it('sends a tie to one last standoff, won by the first tied chicken to shoot', () => {
+    const y = tied();
+    expect(y.winnerUids).toEqual(['a', 'b']);
+    expect(showdownOpen(y, y.endsAt + 10)).toBe(true);
+    const won = winShowdown(y, 'b', y.endsAt + 60_000);
+    expect(won.winnerUids).toEqual(['b']);
+    expect(won.showdown!.winner).toBe('b');
+    expect(showdownOpen(won, y.endsAt + 61_000)).toBe(false);
+    expect(() => winShowdown(won, 'a', y.endsAt + 62_000)).toThrow(RuleError); // too late
+  });
+
+  it('leaves out anyone not tied, needs no tie to begin with, and lets the tie stand after a week', () => {
+    let three = join(yard(), 'c', 'Carl', look, T0);
+    three.members.a.points = 50;
+    three.members.b.points = 50;
+    three = settle(three, three.endsAt + 1);
+    expect(three.showdown!.uids).toEqual(['a', 'b']);
+    expect(() => winShowdown(three, 'c', three.endsAt + 10)).toThrow(RuleError); // Carl was not tied
+    const single = yard();
+    single.members.a.points = 50;
+    expect(settle(single, single.endsAt + 1).showdown).toBeUndefined();
+    expect(showdownOpen(tied(), tied().endsAt + SHOWDOWN_MS + 1)).toBe(false);
   });
 });

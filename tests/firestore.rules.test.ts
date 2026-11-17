@@ -8,7 +8,7 @@ import {
   addDoc, Bytes, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import {
-  choose, createYard, joinHeadStart, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
+  choose, createYard, joinHeadStart, winShowdown, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
 } from '../src/game/rules';
 
 const look: Look = { body: '#fff', beak: 'short', beakColor: '#f90', comb: 'classic', combColor: '#d00' };
@@ -367,5 +367,20 @@ describe('yards', () => {
     await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), annas));
     const both = startEating(annas, 'ben', Date.now(), 60).yard; // side by side
     await assertSucceeds(setDoc(doc(dbFor('ben'), 'yards/y1'), both));
+  });
+
+  it('lets only a tied chicken win the final standoff, once, and change nothing else', async () => {
+    const y = join(join(freshYard(), 'ben', 'Ben', look, Date.now()), 'carl', 'Carl', look, Date.now());
+    y.members.anna.points = 40;
+    y.members.ben.points = 40;
+    const tied = settle(y, y.endsAt + 1);
+    tied.showdown!.at = Date.now() - 1000;
+    await seed(tied);
+    await assertFails(setDoc(doc(dbFor('carl'), 'yards/y1'), { ...tied, winnerUids: ['carl'], showdown: { ...tied.showdown, winner: 'carl' } }));
+    const sneaky = winShowdown(tied, 'ben', Date.now());
+    sneaky.members.ben.points = 999;
+    await assertFails(setDoc(doc(dbFor('ben'), 'yards/y1'), sneaky));
+    await assertSucceeds(setDoc(doc(dbFor('ben'), 'yards/y1'), winShowdown(tied, 'ben', Date.now())));
+    await assertFails(updateDoc(doc(dbFor('anna'), 'yards/y1'), { winnerUids: ['anna'], 'showdown.winner': 'anna' }));
   });
 });

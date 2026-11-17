@@ -83,7 +83,7 @@ export function helpScreen(root: HTMLElement): void {
         <div><dt>${t(MODE_NAMES.sundown)}</dt><dd>${t('Eat until the yard closes. Most points at the end wins. The pile shrinks as time runs out.')}</dd></div>
         <div><dt>${t(MODE_NAMES.fatHen)}</dt><dd>${t('The first chicken to reach the target size wins at once. The pile shrinks as the biggest chicken closes in.')}</dd></div>
       </dl>
-      <p>${t('Chickens grow as they score. If the top score is shared, the win is shared.')}</p>
+      <p>${t('Chickens grow as they score. If the top score is shared, it comes down to one final standoff: the first of the tied chickens to come back and shoot wins the yard outright, even if the others are not there. If none of them does within a week, the win is shared.')}</p>
 
       <h2>${t('Cooperative rules')}</h2>
       <p>${t('Any of the three games can be played with Classic rules (everything above) or Cooperative rules. You choose when you open the yard.')}</p>

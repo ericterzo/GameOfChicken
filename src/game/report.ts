@@ -12,7 +12,7 @@ export interface LogEntry {
   lost?: number;
   taken?: number;
   betrayal?: boolean;
-  outcome?: 'allied' | 'fought' | 'brawl';
+  outcome?: 'allied' | 'fought' | 'brawl' | 'showdown';
   victimUids?: string[];
   killedUid?: string | null;
 }

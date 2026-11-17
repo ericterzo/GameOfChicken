@@ -3,7 +3,7 @@ import {
   claimStats, declineInvite, finalizeYard, hasUnclaimed, ONLINE_MS, watchProfiles, whoIsEating, type Profile, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
   type InboxMessage, type YardDoc,
 } from '../api';
-import { countsForRecords, isOut, MODE_NAMES, RULESET_NAMES, settle, type Member } from '../game/rules';
+import { countsForRecords, isOut, MODE_NAMES, RULESET_NAMES, settle, showdownOpen, type Member } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
@@ -200,6 +200,10 @@ export const homeScreen: Screen = (root, app) => {
         line = t('Closes in {0} · you have {1}', span(y.endsAt - now), num(mine));
       } else if (!countsForRecords(y)) {
         line = t('Closed · solo yard, not counted · you had {0}', num(mine));
+      } else if (showdownOpen(y, now)) {
+        line = y.showdown!.uids.includes(uid)
+          ? `<strong class="shot">${t('Tied! Final standoff: the first of you to come back and shoot wins.')}</strong>`
+          : t('Closed · tied, waiting for the final standoff');
       } else if (!y.winnerUids.length) {
         line = t('Closed · nobody ate');
       } else {

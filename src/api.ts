@@ -556,7 +556,7 @@ export interface BoardEntry {
   /** A shot at one's own ally. */
   betrayal?: boolean;
   /** How a standoff ended: uid and victimUid allied, uid fought victimUid off, or both brawled. */
-  outcome?: 'allied' | 'fought' | 'brawl';
+  outcome?: 'allied' | 'fought' | 'brawl' | 'showdown';
   /** The fox: who it caught (names), whom it killed (brutal rules), and the feed lost. */
   victims?: string[];
   killed?: string | null;
@@ -803,7 +803,31 @@ export async function finalizeYard(id: string): Promise<void> {
 /** True if some member of this finished yard still has to have it added to their record. */
 export function hasUnclaimed(yard: Yard): boolean {
   const done = yard.claimedUids ?? [];
+  // A tie still waiting for its final standoff: records wait for the winner.
+  if (rules.showdownOpen(yard, Date.now())) return false;
   return yard.status === 'finished' && yard.memberUids.some((u) => !yard.members[u].statsClaimed && !done.includes(u));
+}
+
+/** One of the tied chickens shoots first in the final standoff, and wins the yard outright. */
+export async function winShowdown(yardId: string, me: Profile): Promise<void> {
+  try {
+    await yardTx(async (tx) => {
+      const snap = await tx.get(yardRef(yardId));
+      if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
+      const now = Date.now();
+      const after = rules.winShowdown(snap.data() as Yard, me.uid, now);
+      tx.set(yardRef(yardId), after);
+      for (const u of after.showdown!.uids.filter((v) => v !== me.uid)) {
+        tx.set(doc(boardCol(yardId)), {
+          kind: 'duel', outcome: 'showdown', at: now, by: me.uid, uid: me.uid, username: after.members[me.uid].username,
+          victimUid: u, victimName: after.members[u].username,
+        });
+      }
+    });
+    track('showdown_won');
+  } catch (e) {
+    throw friendly(e);
+  }
 }
 
 /**

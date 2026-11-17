@@ -143,6 +143,8 @@ export interface Yard {
   shout?: { uid: string; at: number } | null;
   /** Classic when absent. */
   ruleset?: Ruleset;
+  /** A shared win goes to one last standoff: the first of the tied chickens to shoot wins outright. */
+  showdown?: { uids: string[]; at: number; winner?: string | null } | null;
   /** Cooperative rules: the meals eaten side by side. */
   feast?: Record<string, Eating>;
   /** The fox's latest visit already dealt with (cooperative rules), and what it did. */
@@ -312,6 +314,7 @@ function finishIfOver(yard: Yard, now: number): void {
   yard.winnerUids = best > 0
     ? Object.keys(yard.members).filter((u) => yard.members[u].points === best).sort()
     : [];
+  if (yard.winnerUids.length > 1) yard.showdown = { uids: [...yard.winnerUids], at: now, winner: null };
 }
 
 const present = (yard: Yard, uid: string, now: number) => now - (yard.members[uid]?.lastSeen ?? 0) < PRESENCE_MS;
@@ -941,6 +944,29 @@ export function mealEvents(before: Yard, after: Yard, now: number, caught: Inter
     if (amount > 0) out.push({ kind: 'ate', uid: e.uid, amount, at: Math.min(now, mealEnd(before, now, e)) });
   }
   return out;
+}
+
+// ---------- the final standoff ----------
+
+/** How long the tied chickens have to settle it before the win stays shared. */
+export const SHOWDOWN_MS = 7 * 24 * 3600_000;
+
+/** True while a tie is waiting for one of its chickens to come back and shoot. */
+export function showdownOpen(yard: Yard, now: number): boolean {
+  const sd = yard.showdown;
+  return yard.status === 'finished' && !!sd && !sd.winner && now - sd.at < SHOWDOWN_MS;
+}
+
+/** `uid`, one of the tied chickens, shoots the others first and wins the yard outright. */
+export function winShowdown(yard: Yard, uid: string, now: number): Yard {
+  if (!showdownOpen(yard, now)) throw new RuleError('The final standoff is already over.');
+  if (!yard.showdown!.uids.includes(uid)) throw new RuleError('Only the tied chickens take part in the final standoff.');
+  const y = clone(yard);
+  y.winnerUids = [uid];
+  y.showdown = { ...y.showdown!, winner: uid };
+  const loser = y.showdown.uids.find((u) => u !== uid)!;
+  y.shot = { byUid: uid, victimUid: loser, at: now };
+  return y;
 }
 
 /** A yard only counts towards lifetime records if at least two chickens joined it. */
