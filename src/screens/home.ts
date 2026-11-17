@@ -7,6 +7,7 @@ import { countsForRecords, isOut, MODE_NAMES, settle, type Member } from '../gam
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
+import { APP_COMMIT, APP_VERSION, REPO_URL } from '../version';
 import { sceneClock, yardScene } from '../ui/yardScene';
 
 /** Why I am out of a yard, and for how long. */
@@ -47,7 +48,8 @@ export const homeScreen: Screen = (root, app) => {
         <div><dt>${t('Creator')}</dt><dd>Eric Serra</dd></div>
         <div><dt>${t('Game studio')}</dt><dd>Verdant Outpost Games</dd></div>
       </dl>
-    </section>`;
+    </section>
+    <p class="version"><a href="${REPO_URL}" target="_blank" rel="noopener" title="${t('The game’s code on GitHub')}">v${esc(APP_VERSION)}${APP_COMMIT ? ` · ${esc(APP_COMMIT)}` : ''}</a></p>`;
 
   const cosy = root.querySelector<HTMLElement>('#cosy-scene')!;
   const caption = root.querySelector<HTMLElement>('.cosy-caption')!;
