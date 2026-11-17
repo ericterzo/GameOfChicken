@@ -3,11 +3,18 @@ import {
   claimStats, declineInvite, finalizeYard, hasUnclaimed, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
   type InboxMessage, type YardDoc,
 } from '../api';
-import { countsForRecords, isShot, MODE_NAMES, settle } from '../game/rules';
+import { countsForRecords, isOut, MODE_NAMES, settle, type Member } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
 import { sceneClock, yardScene } from '../ui/yardScene';
+
+/** Why I am out of a yard, and for how long. */
+export function outLine(m: Member, by: string, left: string): string {
+  if (m.outWhy === 'beaten') return t('{0} fought you off. You can go back in {1}.', by, left);
+  if (m.outWhy === 'brawl') return t('You and {0} fought and were both thrown out. You can go back in {1}.', by, left);
+  return t('You have been shot by {0}. You can go back in {1}.', by, left);
+}
 
 export const homeScreen: Screen = (root, app) => {
   const uid = app.profile.uid;
@@ -137,10 +144,9 @@ export const homeScreen: Screen = (root, app) => {
       const mine = y.members[uid]?.points ?? 0;
       const tags = `<span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}`;
       let line: string;
-      const shot = y.status === 'active' && isShot(y, uid, now);
+      const shot = y.status === 'active' && isOut(y, uid, now);
       if (shot) {
-        line = `<strong class="shot">${t('You have been shot by {0}. You can go back in {1}.',
-          esc(y.members[y.members[uid].shotBy ?? '']?.username ?? t('A chicken')), span(y.members[uid].shotUntil! - now))}</strong>`;
+        line = `<strong class="shot">${outLine(y.members[uid], esc(y.members[y.members[uid].outBy ?? '']?.username ?? t('A chicken')), span(y.members[uid].outUntil! - now))}</strong>`;
       } else if (y.status === 'waiting') {
         const left = (y.invitedUids ?? []).length;
         line = y.startsAt != null ? t('Starts in {0}', span(y.startsAt - now))
@@ -182,7 +188,7 @@ export const homeScreen: Screen = (root, app) => {
   // While I am shot out of a yard, its wait counts down second by second.
   const shotTimer = window.setInterval(() => {
     const now = Date.now();
-    if (yards.some((y) => (y.members[uid]?.shotUntil ?? 0) > now - 2000)) paintYards();
+    if (yards.some((y) => (y.members[uid]?.outUntil ?? 0) > now - 2000)) paintYards();
   }, 1000);
   return () => { stops.forEach((s) => s()); clearInterval(timer); clearInterval(shotTimer); };
 };

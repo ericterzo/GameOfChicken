@@ -18,6 +18,8 @@ export interface SceneChicken {
   gun?: boolean;
   /** Has just been shot: keels over on the way out. */
   shot?: boolean;
+  /** Shot its own ally: red horns for the rest of the game. */
+  horns?: boolean;
 }
 
 export interface SceneOptions {
@@ -371,11 +373,11 @@ function chicken(c: SceneChicken, spot: [number, number]): string {
   const [dx, dy] = spot;
   const k = 0.42 + 0.72 * Math.max(0, Math.min(1, c.size));
   const flip = dx > 0 ? -1 : 1;
-  const top = -(c.look.crown === 'big' ? 120 : 94) * k - 6; // the grand crown towers over the name
+  const top = -(c.look.crown === 'big' ? 120 : c.horns ? 102 : 94) * k - 6; // the grand crown towers over the name
   return `<g transform="translate(${PX + dx} ${PY + dy})">
     <ellipse cx="0" cy="0" rx="${f1(27 * k)}" ry="${f1(4.5 * k)}" fill="#000" fill-opacity="0.16"/>
     <g transform="scale(${(flip * k).toFixed(3)} ${k.toFixed(3)}) translate(-48 -94)">
-      <g class="${c.shot ? 'ck-shot' : c.eating ? 'pecking' : ''}">${chickenParts(c.look, { asleep: c.shot })}</g>
+      <g class="${c.shot ? 'ck-shot' : c.eating ? 'pecking' : ''}">${chickenParts(c.look, { asleep: c.shot, horns: c.horns })}</g>
       ${c.gun ? GUN : ''}
     </g>
     ${c.gun ? `<text x="0" y="${(top - 17).toFixed(0)}" text-anchor="middle" class="bang">BANG!</text>` : ''}

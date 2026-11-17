@@ -97,8 +97,18 @@ function crown(kind: 'small' | 'big'): string {
   return `<g class="ck-crown" transform="translate(72.5 ${big ? 21 : 19.6}) rotate(6) scale(${big ? 3 : 1})">${big ? bling : plain}</g>`;
 }
 
+/** Red devil horns, worn in a yard by a chicken that shot its own ally. */
+function horns(): string {
+  const a = `fill="#a3000f" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"`;
+  const shine = 'fill="none" stroke="#ff6b6b" stroke-width="1.2" stroke-linecap="round"';
+  return `<g class="ck-horns">
+    <path ${a} d="M60 28 Q49 21 47 -1 Q57 13 69 20 z"/><path ${shine} d="M52 9 Q55 17 61 21"/>
+    <path ${a} d="M79 21 Q90 13 95 -3 Q98 18 86 28 z"/><path ${shine} d="M92 6 Q91 16 86 22"/>
+  </g>`;
+}
+
 /** Inner SVG markup for one chicken, to be placed inside any <svg> or <g>. */
-export function chickenParts(look: Look, opts: { asleep?: boolean } = {}): string {
+export function chickenParts(look: Look, opts: { asleep?: boolean; horns?: boolean } = {}): string {
   const body = safeColor(look.body, '#ffffff');
   const beakC = safeColor(look.beakColor, '#f5a623');
   const combC = safeColor(look.combColor, '#d93025');
@@ -118,12 +128,13 @@ export function chickenParts(look: Look, opts: { asleep?: boolean } = {}): strin
     ${wattle(look.wattle, safeColor(look.wattleColor ?? combC, combC))}
     ${eye}
     ${look.eyepatch ? eyepatch() : ''}
+    ${opts.horns ? horns() : ''}
     ${look.crown === 'small' || look.crown === 'big' ? crown(look.crown) : ''}
     ${look.hand ? hand() : ''}`;
 }
 
 /** A standalone chicken picture. */
-export function chickenSvg(look: Look, opts: { px?: number; pecking?: boolean; asleep?: boolean } = {}): string {
+export function chickenSvg(look: Look, opts: { px?: number; pecking?: boolean; asleep?: boolean; horns?: boolean } = {}): string {
   const px = opts.px ?? 96;
   return `<svg class="chicken" overflow="visible" viewBox="0 0 100 100" width="${px}" height="${px}" aria-hidden="true">
     <g class="${opts.pecking ? 'pecking' : ''}">${chickenParts(look, opts)}</g></svg>`;

@@ -3,11 +3,17 @@ export const pirate: Record<string, string> = {
   '(you)': '(that be ye)',
   '1 day': '1 day at sea',
   '1 hour': '1 hour',
+  '<strong>Both ally:</strong> each picks how long to feed, and keeps it secret. You feed side by side and cannot catch each other, but any other chicken who walks in can catch you both. When your meal is over, you leave the yard.':
+    '<strong>Both ally:</strong> each picks how long to feed, an’ keeps it secret. Ye feed side by side an’ can’t board each other, but any other bird who walks in can catch ye both. When yer meal be done, ye leave the yard.',
+  '<strong>Both fight:</strong> both are thrown out for 12 minutes.':
+    '<strong>Both fight:</strong> both be tossed overboard fer 12 minutes.',
   '<strong>Flock</strong> shows your record next to your friends’. Add friends by username.':
     '<strong>Crew</strong> shows yer plunder next to yer mateys’. Press-gang mateys by their pirate name.',
   '<strong>Leaderboard</strong> ranks every chicken in the game.': '<strong>Legends</strong> ranks every scurvy bird on the seven seas.',
   '<strong>My chicken</strong> is where you design your personal chicken. It is offered for every yard you start or join.':
     '<strong>Me bird</strong> be where ye rig out yer own bird. ’Tis offered fer every yard ye open or board.',
+  '<strong>One fights, one allies:</strong> the fighter keeps the yard; the other is thrown out for 7 minutes.':
+    '<strong>One fights, one allies:</strong> the fighter keeps the yard; the other be tossed overboard fer 7 minutes.',
   '<strong>{0}</strong> caught your chicken eating in <strong>{1}</strong>. You lost that meal: {2} points.':
     '<strong>{0}</strong> caught yer bird scoffin’ grub in <strong>{1}</strong>. That meal be plundered: {2} doubloons, gone to Davy Jones.',
   '<strong>{0}</strong> invited you to <strong>{1}</strong>': '<strong>{0}</strong> be callin’ ye aboard <strong>{1}</strong>',
@@ -31,6 +37,12 @@ export const pirate: Record<string, string> = {
   'Add friends under Flock and you can invite them from here.': 'Recruit mateys under Crew and ye can summon ’em from here.',
   'Add to my flock': 'Press-gang into me crew',
   'Added to your flock.': 'Welcome aboard, matey! Added to yer crew.',
+  'Alliances: {0}': 'Alliances: {0}',
+  'Allied': 'Allied',
+  'Allied meal: {0} cannot catch you, but any other chicken can. When it is over you leave the yard.':
+    'Allied meal: {0} can’t board ye, but any other bird can. When ’tis done ye leave the yard.',
+  'Ally': 'Parley',
+  'Ally or fight': 'Parley or fight',
   'Already have a chicken? Sign in': 'Already sailin’ with us? Come aboard',
   'Already in your flock.': 'That one already sails with yer crew.',
   'Already running. Closes in {0}.': 'Already under sail. Closes in {0}.',
@@ -48,11 +60,21 @@ export const pirate: Record<string, string> = {
   'Back': 'Back to port',
   'Back to home': 'Back to port',
   'Back to your yards': 'Back to yer yards',
+  'Bang! You betrayed {0}. The whole yard will see your horns.': 'Bang! Ye betrayed {0}. The whole yard will see yer horns, ye scurvy dog.',
   'Bang! You shot {0}. The yard is yours for a few minutes.': 'Bang! Ye shot {0}. The yard be yers fer a few minutes. Yo ho!',
   'Banked {0} points.': '{0} doubloons stowed in yer chest. Arr!',
   'Beak': 'Beak',
+  'Betrayals: {0}': 'Betrayals: {0}',
+  'Betrayed by an ally: {0}': 'Betrayed by a shipmate: {0}',
+  'Betrayed! Your ally {0} shot you. You are out of the yard for {1}.':
+    'Betrayed! Yer shipmate {0} shot ye. Ye be out o’ the yard fer {1}.',
   'Biggest single heist: {0} feed': 'Biggest single haul: {0} grub',
   'Biggest thief': 'Greatest plunderer',
+  'Biggest traitor': 'Foulest turncoat',
+  'Both ally: you feed side by side, each for a secret length of time, and neither can catch the other.':
+    'Both parley: ye feed side by side, each fer a secret spell, an’ neither can board the other.',
+  'Both fight: both are thrown out for 12 minutes.': 'Both fight: both be tossed overboard fer 12 minutes.',
+  'Brawls: {0}': 'Brawls: {0}',
   'Busiest times': 'Busiest watches',
   'Calling the flock…': 'Whistlin’ fer the crew…',
   'Cancel': 'Belay that',
@@ -68,6 +90,7 @@ export const pirate: Record<string, string> = {
   'Chicken saved.': 'Yer bird be shipshape.',
   'Chickens grow as they score. If the top score is shared, the win is shared.':
     'Birds fatten as they plunder. If the top haul be shared, so be the glory.',
+  'Choose in secret.': 'Choose in secret, matey.',
   'Classic': 'Classic',
   'Close': 'Belay',
   'Close shaves: {0}': 'Close shaves: {0}',
@@ -122,6 +145,8 @@ export const pirate: Record<string, string> = {
   'Feed in the pile': 'Grub in the hoard',
   'Feed lost': 'Grub lost',
   'Feed stolen': 'Grub plundered',
+  'Fight': 'Fight',
+  'Fights won: {0}': 'Fights won: {0}',
   'First chicken to grow to the target size wins.': 'First bird to fatten to the mark takes all.',
   'Flock': 'Crew',
   'Flock table': 'Crew’s ledger',
@@ -210,6 +235,8 @@ export const pirate: Record<string, string> = {
   'Nothing yet. Notes and yard news show up here.': 'The log be blank. Notes and yard tidings show up here.',
   'Notice board': 'Ship’s log',
   'of {0}': 'o’ {0}',
+  'One fights: the fighter keeps the yard and the other is thrown out for 7 minutes.':
+    'One fights: the fighter keeps the yard an’ the other be tossed overboard fer 7 minutes.',
   'One point is one second of eating. 3,600 is an hour’s worth.': 'One doubloon be one second o’ eatin’. 3,600 be an hour’s worth.',
   'Only the chicken who opened the yard can start it early.': 'Only the cap’n who opened the yard can weigh anchor early.',
   'Only the meal in progress is lost. Points from meals already finished or stopped are safe for good.':
@@ -256,6 +283,7 @@ export const pirate: Record<string, string> = {
   'So when two of you are there together, somebody has to leave first.': 'So when two o’ ye be there together, one must blink first.',
   'Spiky': 'Spiky',
   'Standoff': 'Standoff, arr',
+  'Standoff with {0}': 'Standoff with {0}',
   'Start a chicken yard': 'Open a chicken yard',
   'Start eating for {0}': 'Scoff grub fer {0}',
   'Start feeding': 'Tuck in',
@@ -316,6 +344,7 @@ export const pirate: Record<string, string> = {
   'The yard must stay open for at least a minute.': 'The yard must stay open a minute at the least.',
   'Then always open the game from that icon. On iPhone the icon keeps its own sign-in, so sign in once more there.':
     'Then always open the game from that icon. On iPhone the icon keeps its own papers, so come aboard once more there.',
+  'There is no standoff to settle.': 'There be no standoff to settle.',
   'There is no time left to eat.': 'There be no time left to eat.',
   'There is nothing left to eat.': 'There be not a crumb left.',
   'This is your personal chicken. It greets you on the home screen and is offered whenever you start or join a yard.':
@@ -327,8 +356,10 @@ export const pirate: Record<string, string> = {
   'This yard is closed.': 'This yard be closed.',
   'This yard is full.': 'This yard be full to the gunwales.',
   'Three games': 'Three games',
+  'Thrown out after offering an alliance: {0}': 'Tossed overboard after offerin’ parley: {0}',
   'Time feeding': 'Time at the grub',
   'Times shot: {0}': 'Times shot: {0}',
+  'Toughest fighter': 'Fiercest buccaneer',
   'Type your password to confirm.': 'Scrawl yer secret word to confirm.',
   'Type your username.': 'Scrawl yer pirate name.',
   'under the beak': 'under the beak',
@@ -347,9 +378,12 @@ export const pirate: Record<string, string> = {
   'Wait for everyone': 'Wait fer all hands',
   'Wait them out, or leave and come back later.': 'Wait ’em out, or slink off and come back later.',
   'Waiting for the flock': 'Waitin’ fer the crew',
+  'Waiting for {0} to choose…': 'Waitin’ fer {0} to choose…',
   'Walking in…': 'Swaggerin’ in…',
   'Walking to the yard…': 'Rowin’ to the yard…',
   'Wattle': 'Wattle',
+  'When exactly two chickens face off and nobody is eating, each chooses in secret: ally or fight.':
+    'When exactly two birds face off an’ none be eatin’, each chooses in secret: parley or fight.',
   'While you were away': 'While ye were ashore',
   'Winner': 'Top bird',
   'With <strong>Wait for everyone</strong>, the game only starts once every invited chicken has answered, and the clock starts then.':
@@ -368,8 +402,12 @@ export const pirate: Record<string, string> = {
   'You': 'Ye',
   'You and your friends side by side. Tap a column to sort by it; tap again to reverse.':
     'Ye and yer mateys, broadside to broadside. Tap a column to sort by it; tap again to turn about.',
+  'You and {0} are allies! Choose how long to feed; it stays secret.': 'Ye an’ {0} be shipmates! Choose how long to feed; it stays secret.',
+  'You and {0} fought and were both thrown out. You can go back in {1}.':
+    'Ye an’ {0} fought an’ were both tossed overboard. Ye can crawl back in {1}.',
   'You are a chicken. There is one pile of feed and everyone wants it. Eat while nobody is looking, because the moment another chicken walks in, your meal is gone.':
     'Ye be a chicken. There be one hoard o’ grub and every bird wants it. Eat while no soul be watchin’, fer the moment another bird walks in, yer meal be gone.',
+  'You are allied with {0}': 'Ye be shipmates with {0}',
   'You are already eating.': 'Ye be eatin’ already.',
   'You are invited': 'Ye be summoned',
   'You are not in any yard yet. Start one, or join a friend’s with their code.':
@@ -380,6 +418,7 @@ export const pirate: Record<string, string> = {
   'You are outside the top {0} for this column; your row is added at the end.':
     'Ye be outside the top {0} fer this column; yer row be tacked on at the stern.',
   'You are the first one here.': 'Ye be the first aboard.',
+  'You both chose to fight! You and {0} are out of the yard for {1}.': 'Ye both chose to fight! Ye an’ {0} be out o’ the yard fer {1}.',
   'You can close the app. Your chicken keeps eating until the timer runs out, and the whole meal is then yours.':
     'Ye can close the app. Yer bird keeps eatin’ till the hourglass runs out, and the whole meal be yers.',
   'You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.':
@@ -387,35 +426,51 @@ export const pirate: Record<string, string> = {
   'You can invite friends from your flock when starting a yard. They accept or decline from their home screen.':
     'Ye can summon mateys from yer crew when openin’ a yard. They say aye or nay from their own port.',
   'You caught {0} eating! Their {1} are gone, you get {2}.': 'Ye caught {0} at the grub! Their {1} be gone, and {2} be yer plunder. Yo ho!',
+  'You chose to ally.': 'Ye chose to parley.',
+  'You chose to fight.': 'Ye chose to fight.',
   'You earn <strong>one point for every second</strong> your chicken eats.':
     'Ye earn <strong>one doubloon fer every second</strong> yer bird eats.',
   'You finished with {0} points.': 'Ye finished with {0} doubloons.',
   'You get <strong>a third of it</strong>, added to your score straight away.':
     'Ye take <strong>a third o’ it</strong> as plunder, straight into yer chest.',
+  'You have already chosen.': 'Ye’ve already chosen.',
   'You have been shot by {0}! You are out of the yard for {1}.': '{0} shot ye, ye bilge rat! Ye be out o’ the yard fer {1}.',
   'You have been shot by {0}. You can go back in {1}.': '{0} shot ye. Ye can crawl back in {1}.',
-  'You have been shot. Wait before going back in.': 'Ye’ve been shot. Lick yer wounds afore goin’ back in.',
   'You joined {0}.': 'Ye boarded {0}.',
   'You sign in with the new name and the same password.': 'Ye come aboard with the new name and the same secret word.',
+  'You were thrown out of this yard. Wait before going back in.': 'Ye were tossed out o’ this yard. Wait afore goin’ back in.',
   'You win the yard': 'Ye plundered the yard, Cap’n!',
   'Your account is deleted. Goodbye!': 'Ye’ve walked the plank. Fair winds, matey!',
+  'Your allied meal is over and your chicken leaves the yard. Banked {0} points.':
+    'Yer allied meal be done an’ yer bird leaves the yard. {0} doubloons stowed.',
   'Your browser blocked the Google window. Allow pop-ups and try again.':
     'Yer browser scuttled the Google window. Allow pop-ups and try again.',
   'Your chicken': 'Yer bird',
   'Your chicken and your record': 'Yer bird and yer legend',
   'Your chicken for this yard': 'Yer bird fer this yard',
+  'Your feeding time is secret. {0} cannot catch you, but any other chicken can. When your meal is over, you leave the yard.':
+    'Yer feedin’ time be secret. {0} can’t board ye, but any other bird can. When yer meal be done, ye leave the yard.',
   'Your flock': 'Yer crew',
   'Your record': 'Yer legend',
   'Your record, flock and yards come with you.': 'Yer legend, crew and yards sail with ye.',
   'Your yards': 'Yer yards',
+  '{0} and {1} formed an alliance.': '{0} an’ {1} struck a parley.',
+  '{0} and {1} fought, and both were thrown out.': '{0} an’ {1} brawled, an’ both were tossed overboard.',
   '{0} are in the yard. Nobody eats while another chicken is watching.': '{0} be in the yard. No bird eats while another be watchin’.',
+  '{0} betrayed the alliance with {1} and shot them.': '{0} betrayed the parley with {1} an’ shot ’em. Treachery!',
   '{0} caught {1} eating and took {2} of their {3} feed.': '{0} caught {1} at the grub and plundered {2} o’ their {3} grub. Arr!',
   '{0} chickens are waiting in the yard.': '{0} birds be waitin’ in the yard.',
+  '{0} chose to fight and threw you out! You are out of the yard for {1}.':
+    '{0} chose to fight an’ tossed ye overboard! Ye be out o’ the yard fer {1}.',
   '{0} days': '{0} days at sea',
   '{0} finished a meal of {1} feed.': '{0} scoffed a meal o’ {1} grub.',
+  '{0} fought off {1}.': '{0} fought off {1}.',
+  '{0} fought you off. You can go back in {1}.': '{0} fought ye off. Ye can crawl back in {1}.',
+  '{0} has made up their mind.': '{0} has made up their mind.',
   '{0} hours': '{0} hours',
   '{0} is in the yard. Nobody eats while another chicken is watching.': '{0} be in the yard. No bird eats while another be watchin’.',
   '{0} is safe here. The real yards are below.': '{0} be safe in port. The real yards lie below.',
+  '{0} offered an alliance, but you fought them off. The yard is yours.': '{0} offered parley, but ye fought ’em off. The yard be yers!',
   '{0} shot {1}.': '{0} fired a broadside at {1}. Arr!',
   '{0} still has to answer. Nobody can eat until then.': '{0} has yet to answer. No soul eats till then.',
   '{0} still have to answer. Nobody can eat until then.': '{0} have yet to answer. No soul eats till then.',

@@ -36,6 +36,14 @@ export function helpScreen(root: HTMLElement): void {
         <li>${t('So when two of you are there together, somebody has to leave first.')}</li>
       </ul>
 
+      <h2>${t('Ally or fight')}</h2>
+      <p>${t('When exactly two chickens face off and nobody is eating, each chooses in secret: ally or fight.')}</p>
+      <ul>
+        <li>${t('<strong>Both ally:</strong> each picks how long to feed, and keeps it secret. You feed side by side and cannot catch each other, but any other chicken who walks in can catch you both. When your meal is over, you leave the yard.')}</li>
+        <li>${t('<strong>One fights, one allies:</strong> the fighter keeps the yard; the other is thrown out for 7 minutes.')}</li>
+        <li>${t('<strong>Both fight:</strong> both are thrown out for 12 minutes.')}</li>
+      </ul>
+
       <h2>${t('Three games')}</h2>
       <dl class="modes-help">
         <div><dt>${t(MODE_NAMES.lastGrain)}</dt><dd>${t('The pile holds a fixed amount of feed. When it is all eaten, whoever ate the most wins. Feed from a lost meal goes back in the pile, apart from the stolen third.')}</dd></div>

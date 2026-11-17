@@ -4,13 +4,15 @@ import { leaderPoints, totalPoints, type Yard } from './rules';
 
 /** One line of the yard's log (see BoardEntry in api.ts). */
 export interface LogEntry {
-  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot';
+  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot' | 'duel';
   at: number;
   uid: string;
   amount?: number;
   victimUid?: string;
   lost?: number;
   taken?: number;
+  betrayal?: boolean;
+  outcome?: 'allied' | 'fought' | 'brawl';
 }
 
 export interface Dealings { times: number; feed: number }
@@ -34,6 +36,14 @@ export interface PlayerReport {
   caughtBy: Record<string, Dealings>;
   shotsFired: number;
   timesShot: number;
+  /** Standoffs settled by choosing: alliances made, fights won, thrown out for offering peace, brawls. */
+  alliances: number;
+  fightsWon: number;
+  foughtOff: number;
+  brawls: number;
+  /** Shots at one's own ally, and being shot by one's ally. */
+  betrayals: number;
+  betrayed: number;
   /** Walked in just after another chicken finished a meal: how often, and how much feed got away. */
   nearMisses: number;
   nearMissFeed: number;
@@ -44,7 +54,7 @@ export interface PlayerReport {
   busiestHour: number | null;
 }
 
-export type AwardKind = 'thief' | 'robbed' | 'longestMeal' | 'nosiest' | 'glutton' | 'sharpshooter' | 'escape' | 'chatterbox';
+export type AwardKind = 'thief' | 'robbed' | 'longestMeal' | 'nosiest' | 'glutton' | 'sharpshooter' | 'escape' | 'chatterbox' | 'traitor' | 'fighter';
 export interface Award { kind: AwardKind; uid: string; value: number }
 
 export interface YardReport {
@@ -77,6 +87,7 @@ export function yardReport(yard: Yard, log: LogEntry[], hourOf: (t: number) => n
     players[uid] = {
       uid, visits: 0, notes: 0, meals: 0, feedingMs: 0, longestMeal: 0, steals: 0, feedStolen: 0, biggestHeist: 0, stolenFrom: {},
       timesCaught: 0, feedLost: 0, caughtBy: {}, shotsFired: 0, timesShot: 0, nearMisses: 0, nearMissFeed: 0, closeShaves: 0,
+      alliances: 0, fightsWon: 0, foughtOff: 0, brawls: 0, betrayals: 0, betrayed: 0,
       hours: new Array<number>(24).fill(0), busiestHour: null,
     };
   }
@@ -119,8 +130,26 @@ export function yardReport(yard: Yard, log: LogEntry[], hourOf: (t: number) => n
       lastMealAt = Math.max(lastMealAt, e.at);
     }
     if (e.kind === 'shot' && e.victimUid && players[e.victimUid]) {
+      const v = players[e.victimUid];
       p.shotsFired += 1;
-      players[e.victimUid].timesShot += 1;
+      v.timesShot += 1;
+      if (e.betrayal) {
+        p.betrayals += 1;
+        v.betrayed += 1;
+        // A betrayed ally loses the meal they were eating.
+        const lost = e.lost ?? 0;
+        if (lost > 0) {
+          v.feedLost += lost;
+          v.feedingMs += lost * 1000;
+          meals.push([e.at - lost * 1000, e.at]);
+        }
+      }
+    }
+    if (e.kind === 'duel' && e.victimUid && players[e.victimUid]) {
+      const v = players[e.victimUid];
+      if (e.outcome === 'allied') { p.alliances += 1; v.alliances += 1; }
+      if (e.outcome === 'fought') { p.fightsWon += 1; v.foughtOff += 1; }
+      if (e.outcome === 'brawl') { p.brawls += 1; v.brawls += 1; }
     }
   }
 
@@ -163,6 +192,8 @@ export function yardReport(yard: Yard, log: LogEntry[], hourOf: (t: number) => n
   give('nosiest', (p) => p.visits);
   give('escape', (p) => p.closeShaves);
   give('sharpshooter', (p) => p.shotsFired);
+  give('traitor', (p) => p.betrayals);
+  give('fighter', (p) => p.fightsWon);
   give('chatterbox', (p) => p.notes);
 
   const all = Object.values(players);

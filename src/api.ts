@@ -440,7 +440,7 @@ export function watchMyInvites(uid: string, cb: (yards: YardDoc[]) => void): () 
 
 export interface BoardEntry {
   id: string;
-  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot';
+  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot' | 'duel';
   at: number;
   /** Who the line is about: the writer, the visitor, the eater or the catcher. */
   uid: string;
@@ -451,13 +451,17 @@ export interface BoardEntry {
   victimName?: string;
   lost?: number;
   taken?: number;
+  /** A shot at one's own ally. */
+  betrayal?: boolean;
+  /** How a standoff ended: uid and victimUid allied, uid fought victimUid off, or both brawled. */
+  outcome?: 'allied' | 'fought' | 'brawl';
 }
 
 const boardCol = (yardId: string) => collection(db, 'yards', yardId, 'board');
 
 /** Inside a yard transaction: note any meal that was banked or stolen by it. */
-function logMeals(tx: Transaction, yardId: string, by: string, before: Yard, after: Yard, now: number): void {
-  for (const ev of rules.mealEvents(before, after, now)) {
+function logMeals(tx: Transaction, yardId: string, by: string, before: Yard, after: Yard, now: number, caught: rules.InterruptEvent[] = []): void {
+  for (const ev of rules.mealEvents(before, after, now, caught)) {
     const username = after.members[ev.uid].username;
     tx.set(doc(boardCol(yardId)), ev.kind === 'ate'
       ? { kind: 'ate', at: ev.at, by, uid: ev.uid, username, amount: ev.amount }
@@ -486,13 +490,15 @@ export const MAX_NOTE = 300;
  * shoots another one out of the yard. Returns the victim's name, or null when
  * there was no standoff (the word is then posted like any other note).
  */
-async function drawGun(yardId: string, me: Profile): Promise<string | null> {
+export interface GunShot { victim: string; betrayal: boolean }
+
+async function drawGun(yardId: string, me: Profile): Promise<GunShot | null> {
   return yardTx(async (tx) => {
     const snap = await tx.get(yardRef(yardId));
     if (!snap.exists()) return null;
     const before = snap.data() as Yard;
     const now = Date.now();
-    let shot: ReturnType<typeof rules.shoot>;
+    let shot: rules.ShotResult;
     try {
       const span = rules.SHOT_MAX_MS - rules.SHOT_MIN_MS;
       shot = rules.shoot(before, me.uid, now, Math.random(), rules.SHOT_MIN_MS + Math.random() * span);
@@ -505,13 +511,40 @@ async function drawGun(yardId: string, me: Profile): Promise<string | null> {
     tx.set(doc(boardCol(yardId)), {
       kind: 'shot', at: now, by: me.uid, uid: me.uid, username: shot.yard.members[me.uid].username,
       victimUid: shot.victimUid, victimName,
+      ...(shot.betrayal ? { betrayal: true, lost: shot.lost } : {}),
     });
-    return victimName;
+    return { victim: victimName, betrayal: shot.betrayal };
   });
 }
 
-/** Post a note. Resolves to the name of a chicken that was shot instead, if any. */
-export async function postNote(yardId: string, me: Profile, text: string): Promise<string | null> {
+/**
+ * My secret choice in a standoff. Resolves to how it ended once both have
+ * chosen, or null while the other chicken is still making up their mind.
+ */
+export async function chooseSide(yardId: string, me: Profile, choice: rules.Choice): Promise<rules.DuelOutcome | null> {
+  try {
+    return await yardTx(async (tx) => {
+      const snap = await tx.get(yardRef(yardId));
+      if (!snap.exists()) throw new ApiError(t('That yard no longer exists.'));
+      const now = Date.now();
+      const { yard, outcome } = rules.choose(snap.data() as Yard, me.uid, now, choice);
+      tx.set(yardRef(yardId), yard);
+      if (outcome) {
+        const [a, b] = outcome.kind === 'fought' ? [outcome.winnerUid, outcome.loserUid] : outcome.uids;
+        tx.set(doc(boardCol(yardId)), {
+          kind: 'duel', outcome: outcome.kind, at: now, by: me.uid, uid: a, username: yard.members[a].username,
+          victimUid: b, victimName: yard.members[b].username,
+        });
+      }
+      return outcome;
+    });
+  } catch (e) {
+    throw friendly(e);
+  }
+}
+
+/** Post a note. Resolves to the shot fired instead, if the note was "gun" in a standoff. */
+export async function postNote(yardId: string, me: Profile, text: string): Promise<GunShot | null> {
   const clean = text.trim().slice(0, MAX_NOTE);
   if (!clean) return null;
   try {
@@ -586,9 +619,8 @@ async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Re
       const now = Date.now();
       const result = fn(before, now);
       tx.set(yardRef(yardId), result.yard);
-      logMeals(tx, yardId, uid, before, result.yard, now);
-      const hit = result.interrupted;
-      if (hit) {
+      logMeals(tx, yardId, uid, before, result.yard, now, result.interrupted);
+      for (const hit of result.interrupted) {
         tx.set(doc(collection(db, 'users', hit.victimUid, 'inbox')), {
           yardId, yardName: before.name, byUid: uid, byUsername: before.members[uid].username,
           pointsLost: hit.pointsLost, at: now, read: false,

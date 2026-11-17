@@ -17,6 +17,8 @@ function awardText(kind: AwardKind, value: number): [string, string] {
     case 'nosiest': return [t('Nosiest chicken'), `${t('Visits')}: ${num(value)}`];
     case 'escape': return [t('Narrowest escapes'), t('Close shaves: {0}', num(value))];
     case 'sharpshooter': return [t('Sharpshooter'), t('Shots fired: {0}', num(value))];
+    case 'traitor': return [t('Biggest traitor'), t('Betrayals: {0}', num(value))];
+    case 'fighter': return [t('Toughest fighter'), t('Fights won: {0}', num(value))];
     default: return [t('Chatterbox'), t('Notes posted: {0}', num(value))];
   }
 }
@@ -49,10 +51,16 @@ export function reportHtml(yard: Yard, r: YardReport, meUid: string): string {
       p.busiestHour != null ? t('Most active around {0}', esc(hourRange(p.busiestHour))) : '',
       p.shotsFired ? t('Shots fired: {0}', num(p.shotsFired)) : '',
       p.timesShot ? t('Times shot: {0}', num(p.timesShot)) : '',
+      p.alliances ? t('Alliances: {0}', num(p.alliances)) : '',
+      p.fightsWon ? t('Fights won: {0}', num(p.fightsWon)) : '',
+      p.foughtOff ? t('Thrown out after offering an alliance: {0}', num(p.foughtOff)) : '',
+      p.brawls ? t('Brawls: {0}', num(p.brawls)) : '',
+      p.betrayals ? t('Betrayals: {0}', num(p.betrayals)) : '',
+      p.betrayed ? t('Betrayed by an ally: {0}', num(p.betrayed)) : '',
       p.notes ? t('Notes posted: {0}', num(p.notes)) : '',
     ].filter(Boolean);
     return `<details class="friend report-player" ${p.uid === meUid ? 'open' : ''}>
-      <summary><span class="board-chicken">${chickenSvg(m.look, { px: 44 })}</span>
+      <summary><span class="board-chicken">${chickenSvg(m.look, { px: 44, horns: !!m.traitor })}</span>
         <span class="board-name">${name(p.uid)}</span>
         <span class="muted">${num(m.points)}</span></summary>
       <div class="stats">

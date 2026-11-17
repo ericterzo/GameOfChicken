@@ -8,7 +8,7 @@ import {
   addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import {
-  createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
+  choose, createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
 } from '../src/game/rules';
 
 const look: Look = { body: '#fff', beak: 'short', beakColor: '#f90', comb: 'classic', combColor: '#d00' };
@@ -303,5 +303,27 @@ describe('yards', () => {
     const started = touch(past, 'anna', Date.now()).yard;
     await assertFails(setDoc(doc(dbFor('anna'), 'yards/y1'), { ...started, endsAt: started.endsAt + 3600_000 }));
     await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), started));
+  });
+
+  it('lets allies start only their own allied meal, and logs standoffs in their own name', async () => {
+    const now = Date.now();
+    let y = touch(touch(join(freshYard(), 'ben', 'Ben', look, now), 'anna', now).yard, 'ben', now).yard;
+    y = choose(choose(y, 'anna', now, 'ally').yard, 'ben', now, 'ally').yard;
+    await seed(y);
+    const mine = startEating(y, 'anna', Date.now(), 60).yard;
+    // Ben cannot start Anna's meal for her, nor back-date his own.
+    await assertFails(setDoc(doc(dbFor('ben'), 'yards/y1'), mine));
+    const late = startEating(y, 'ben', Date.now(), 60).yard;
+    late.pact!.meals.ben.startedAt -= 3600_000;
+    await assertFails(setDoc(doc(dbFor('ben'), 'yards/y1'), late));
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), mine));
+    const both = startEating(mine, 'ben', Date.now(), 60).yard;
+    await assertSucceeds(setDoc(doc(dbFor('ben'), 'yards/y1'), both));
+    const board = (uid: string) => collection(dbFor(uid), 'yards/y1/board');
+    const line = { kind: 'duel', outcome: 'fought', at: Date.now(), by: 'ben', uid: 'anna', username: 'Anna', victimUid: 'ben', victimName: 'Ben' };
+    await assertSucceeds(addDoc(board('ben'), line)); // Ben made the last choice and lost
+    await assertFails(addDoc(board('ben'), { ...line, uid: 'carl', victimUid: 'dora' })); // about others
+    await assertFails(addDoc(board('ben'), { ...line, outcome: 'won' }));
+    await assertSucceeds(addDoc(board('anna'), { kind: 'shot', at: Date.now(), by: 'anna', uid: 'anna', username: 'Anna', victimUid: 'ben', victimName: 'Ben', betrayal: true, lost: 12 }));
   });
 });

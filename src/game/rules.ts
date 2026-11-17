@@ -29,9 +29,12 @@ export interface Member {
   /** Feed taken from others by catching them, and feed lost by being caught. Absent on older yards. */
   feedStolen?: number;
   feedLost?: number;
-  /** Shot in a standoff: kept out of the yard until this moment, and by whom. */
-  shotUntil?: number;
-  shotBy?: string;
+  /** Thrown out of the yard until this moment, by whom, and how (see OutReason). */
+  outUntil?: number;
+  outBy?: string;
+  outWhy?: OutReason;
+  /** Shot an ally: wears red horns in this yard until the game ends. */
+  traitor?: boolean;
   statsClaimed: boolean;
 }
 
@@ -42,6 +45,38 @@ export interface Eating {
   endsAt: number | null;
   /** Last heartbeat from the eater's phone. Only meaningful in hardcore yards. */
   lastBeat: number;
+  /** An allied meal: this chicken's ally cannot catch it. Anyone else still can. */
+  allyUid?: string;
+  /** The most feed this meal may take, fixed when it starts (allied meals share the pile). */
+  cap?: number;
+}
+
+/** How a chicken came to be thrown out: shot, fought off after offering an alliance, or a brawl. */
+export type OutReason = 'shot' | 'beaten' | 'brawl';
+
+/** The choice two chickens in a standoff make, each in secret. */
+export type Choice = 'ally' | 'fight';
+
+/** A standoff between two chickens, while one of them has chosen and the other has not. */
+export interface Duel {
+  uids: string[];
+  choices: Record<string, Choice>;
+  at: number;
+}
+
+/**
+ * Two chickens who both chose to ally. Each may start one meal the other
+ * cannot catch; when that meal is over they leave the yard.
+ */
+export interface Pact {
+  uids: string[];
+  at: number;
+  /** Who has started their allied meal. */
+  started: string[];
+  /** The allied meals still running. */
+  meals: Record<string, Eating>;
+  /** Set when one ally shoots the other: nobody is protected any more. */
+  broken?: boolean;
 }
 
 export interface Sleep {
@@ -80,7 +115,10 @@ export interface Yard {
   /** Members whose result has been added to their lifetime record (see claimStats in api.ts). */
   claimedUids?: string[];
   /** The latest shot fired in a standoff (see `shoot`), for the yard to act out. */
-  shot?: { byUid: string; victimUid: string; at: number } | null;
+  shot?: { byUid: string; victimUid: string; at: number; betrayal?: boolean } | null;
+  /** A standoff waiting for its second choice, and an alliance in force. */
+  duel?: Duel | null;
+  pact?: Pact | null;
 }
 
 export interface InterruptEvent {
@@ -92,7 +130,8 @@ export interface InterruptEvent {
 
 export interface Result {
   yard: Yard;
-  interrupted: InterruptEvent | null;
+  /** Meals caught by walking in: none, one, or both of two allies. */
+  interrupted: InterruptEvent[];
 }
 
 export const MIN_MEAL_S = 5;
@@ -154,36 +193,64 @@ export function leaderPoints(yard: Yard): number {
   return Object.values(yard.members).reduce((s, m) => Math.max(s, m.points), 0);
 }
 
-/** How many more points `uid` can bank before the yard's goal stops them. */
+/** Every meal in progress: the ordinary one, and allied ones. */
+export function meals(yard: Yard): Eating[] {
+  return [...(yard.eating ? [yard.eating] : []), ...Object.values(yard.pact?.meals ?? {})];
+}
+
+/** The meal `uid` is eating right now, if any. */
+export function mealOf(yard: Yard, uid: string): Eating | null {
+  return meals(yard).find((e) => e.uid === uid) ?? null;
+}
+
+function dropMeal(yard: Yard, uid: string): void {
+  if (yard.eating?.uid === uid) yard.eating = null;
+  if (yard.pact?.meals[uid]) delete yard.pact.meals[uid];
+}
+
+/**
+ * How many more points `uid` can bank before the yard's goal stops them. In
+ * Last Grain the feed other chickens' meals have claimed is not available.
+ */
 export function roomLeft(yard: Yard, uid: string): number {
   if (yard.goal == null) return Infinity;
-  if (yard.mode === 'lastGrain') return Math.max(0, yard.goal - totalPoints(yard));
+  if (yard.mode === 'lastGrain') {
+    const claimed = meals(yard).filter((e) => e.uid !== uid).reduce((n, e) => n + (e.cap ?? 0), 0);
+    return Math.max(0, yard.goal - totalPoints(yard) - claimed);
+  }
   if (yard.mode === 'fatHen') return Math.max(0, yard.goal - (yard.members[uid]?.points ?? 0));
   return Infinity;
 }
 
 /**
- * The moment the current meal stops earning, whatever the reason: its timer,
- * the yard ending, the goal being reached, or (hardcore) a lost heartbeat.
- * Returns Infinity for a hardcore meal that is still being kept alive.
+ * The moment a meal stops earning, whatever the reason: its timer, the yard
+ * ending, the goal being reached, or (hardcore) a lost heartbeat. Returns
+ * Infinity for a hardcore meal that is still being kept alive.
  */
-export function mealEnd(yard: Yard, now: number): number {
-  const e = yard.eating;
+export function mealEnd(yard: Yard, now: number, e: Eating | null = yard.eating): number {
   if (!e) return -Infinity;
   let end = yard.endsAt;
   const room = roomLeft(yard, e.uid);
   if (room !== Infinity) end = Math.min(end, e.startedAt + room * 1000);
+  if (e.cap != null) end = Math.min(end, e.startedAt + e.cap * 1000);
   if (e.endsAt != null) return Math.min(end, e.endsAt);
   if (now - e.lastBeat > HARDCORE_GRACE_MS) return Math.min(end, Math.max(e.lastBeat, e.startedAt));
   return end;
 }
 
-/** Points the current meal has earned so far (not yet banked). */
-export function mealPoints(yard: Yard, now: number): number {
-  const e = yard.eating;
+/** Points a meal has earned so far (not yet banked). */
+export function mealPoints(yard: Yard, now: number, e: Eating | null = yard.eating): number {
   if (!e) return 0;
-  const until = Math.min(now, mealEnd(yard, now));
+  const until = Math.min(now, mealEnd(yard, now, e));
   return Math.max(0, Math.floor((until - e.startedAt) / 1000));
+}
+
+/** Bank a meal's points as they stand at `at`. An allied chicken then leaves the yard. */
+function bankMeal(yard: Yard, e: Eating, at: number): void {
+  const allied = !!yard.pact?.meals[e.uid];
+  yard.members[e.uid].points += mealPoints(yard, at, e);
+  dropMeal(yard, e.uid);
+  if (allied) yard.members[e.uid].lastSeen = 0;
 }
 
 function finishIfOver(yard: Yard, now: number): void {
@@ -195,10 +262,10 @@ function finishIfOver(yard: Yard, now: number): void {
   }
   if (!over) return;
   // Anything still on the plate when the yard closes is banked.
-  if (yard.eating) {
-    yard.members[yard.eating.uid].points += mealPoints(yard, now);
-    yard.eating = null;
-  }
+  for (const e of meals(yard)) yard.members[e.uid].points += mealPoints(yard, now, e);
+  yard.eating = null;
+  yard.pact = null;
+  yard.duel = null;
   const best = leaderPoints(yard);
   yard.status = 'finished';
   yard.winnerUids = best > 0
@@ -206,16 +273,41 @@ function finishIfOver(yard: Yard, now: number): void {
     : [];
 }
 
-/** Bank a meal that has run its course, and close the yard if it is over. */
+const present = (yard: Yard, uid: string, now: number) => now - (yard.members[uid]?.lastSeen ?? 0) < PRESENCE_MS;
+
+/** An alliance is over once each ally has had their meal, or walked away without one. */
+function tidyPact(yard: Yard, now: number): void {
+  const p = yard.pact;
+  if (!p) return;
+  const running = Object.keys(p.meals).length > 0;
+  const waiting = p.uids.some((u) => !p.started.includes(u) && present(yard, u, now) && !p.broken);
+  if (!running && !waiting) yard.pact = null;
+}
+
+/** A half-made choice lapses when the standoff it was about is over. */
+function tidyDuel(yard: Yard, now: number): void {
+  const d = yard.duel;
+  if (d && !d.uids.every((u) => duelRival(yard, u, now) === d.uids.find((v) => v !== u))) yard.duel = null;
+}
+
+/** Bank the meals that have run their course, in the order they ended, and close the yard if it is over. */
 function settleInPlace(yard: Yard, now: number): void {
   // A yard with a set start time begins then, whoever is the first to notice.
   if (yard.status === 'waiting' && yard.startsAt != null && now >= yard.startsAt) start(yard, yard.startsAt);
   if (yard.status !== 'active') return;
-  if (yard.eating && mealEnd(yard, now) <= now) {
-    yard.members[yard.eating.uid].points += mealPoints(yard, now);
-    yard.eating = null;
+  for (;;) {
+    const due = meals(yard)
+      .map((e) => ({ e, end: mealEnd(yard, now, e) }))
+      .filter((m) => m.end <= now)
+      .sort((a, b) => a.end - b.end)[0];
+    if (!due) break;
+    bankMeal(yard, due.e, due.end);
+    finishIfOver(yard, due.end);
+    if (yard.status !== 'active') return;
   }
   finishIfOver(yard, now);
+  tidyPact(yard, now);
+  tidyDuel(yard, now);
 }
 
 // ---------- actions ----------
@@ -229,62 +321,166 @@ export function settle(yard: Yard, now: number): Yard {
 
 /**
  * `uid` is in the yard right now (just entered, or still has it open).
- * Any other chicken caught eating loses its meal; `uid` takes a third of it.
- * The eater's own visits keep a hardcore meal alive.
+ * Any other chicken caught eating loses its meal and `uid` takes a third of
+ * it, except an ally's protected meal. The eater's own visits keep a hardcore
+ * meal alive.
  */
 export function touch(yard: Yard, uid: string, now: number): Result {
   const y = clone(yard);
   if (!y.members[uid]) throw new RuleError('You are not in this yard.');
-  if (isShot(y, uid, now)) throw new RuleError('You have been shot. Wait before going back in.');
+  if (isOut(y, uid, now)) throw new RuleError('You were thrown out of this yard. Wait before going back in.');
   settleInPlace(y, now);
-  let interrupted: InterruptEvent | null = null;
+  const interrupted: InterruptEvent[] = [];
   if (y.status === 'active') {
-    const e = y.eating;
-    if (e && e.uid !== uid) {
-      const lost = mealPoints(y, now);
+    for (const e of meals(y)) {
+      if (e.uid === uid) {
+        if (y.hardcore) e.lastBeat = now;
+        continue;
+      }
+      if (e.allyUid === uid) continue; // an ally's meal is safe from me
+      const lost = mealPoints(y, now, e);
+      dropMeal(y, e.uid);
       const gained = Math.min(Math.floor(lost / STEAL_DIVISOR), roomLeft(y, uid));
       y.members[uid].points += gained;
       y.members[uid].mealsStolen += 1;
       y.members[uid].feedStolen = (y.members[uid].feedStolen ?? 0) + gained;
       y.members[e.uid].mealsLost += 1;
       y.members[e.uid].feedLost = (y.members[e.uid].feedLost ?? 0) + lost;
-      y.eating = null;
-      interrupted = { victimUid: e.uid, byUid: uid, pointsLost: lost, pointsGained: gained };
-      finishIfOver(y, now);
-    } else if (e && e.uid === uid && y.hardcore) {
-      e.lastBeat = now;
+      interrupted.push({ victimUid: e.uid, byUid: uid, pointsLost: lost, pointsGained: gained });
     }
+    if (interrupted.length) finishIfOver(y, now);
   }
   y.members[uid].lastSeen = now;
+  tidyPact(y, now);
+  tidyDuel(y, now);
   return { yard: y, interrupted };
 }
 
-/** True while `uid` is kept out of the yard after being shot. */
-export function isShot(yard: Yard, uid: string, now: number): boolean {
-  return (yard.members[uid]?.shotUntil ?? 0) > now;
+/** True while `uid` is kept out of the yard (shot, or thrown out after a standoff). */
+export function isOut(yard: Yard, uid: string, now: number): boolean {
+  return (yard.members[uid]?.outUntil ?? 0) > now;
+}
+
+function throwOut(yard: Yard, uid: string, by: string, now: number, ms: number, why: OutReason): void {
+  const m = yard.members[uid];
+  m.lastSeen = 0;
+  m.outUntil = now + ms;
+  m.outBy = by;
+  m.outWhy = why;
 }
 
 export const SHOT_MIN_MS = 2 * 60_000;
 export const SHOT_MAX_MS = 4 * 60_000;
+export const FOUGHT_OFF_MS = 7 * 60_000;
+export const BRAWL_MS = 12 * 60_000;
+
+/** `uid`'s ally, while their alliance holds. */
+export function allyOf(yard: Yard, uid: string): string | null {
+  const p = yard.pact;
+  if (!p || p.broken || !p.uids.includes(uid)) return null;
+  return p.uids.find((u) => u !== uid) ?? null;
+}
 
 /**
- * The standoff's secret way out: `uid` draws a gun on another chicken watching
- * the yard. The victim is thrown out and cannot come back for `waitMs`.
- * `pick` (0 to 1) chooses the victim when several are watching. Returns no
- * victim, and the yard untouched, when there is no standoff to end.
+ * The chicken `uid` is facing in a standoff that can be settled with Ally or
+ * Fight: exactly one other chicken watching, nobody eating, no alliance in force.
  */
-export function shoot(yard: Yard, uid: string, now: number, pick: number, waitMs: number): { yard: Yard; victimUid: string | null } {
+export function duelRival(yard: Yard, uid: string, now: number): string | null {
+  if (yard.status !== 'active' || isAsleep(yard.sleep, now) || meals(yard).length || yard.pact) return null;
+  if (!yard.members[uid] || isOut(yard, uid, now) || !present(yard, uid, now)) return null;
+  const others = othersPresent(yard, uid, now);
+  return others.length === 1 ? others[0] : null;
+}
+
+export type DuelOutcome =
+  | { kind: 'allied'; uids: [string, string] }
+  | { kind: 'fought'; winnerUid: string; loserUid: string }
+  | { kind: 'brawl'; uids: [string, string] };
+
+/**
+ * `uid` makes their secret choice in a standoff. Once both have chosen:
+ * both ally, and they may feed side by side; one fights, and the other is
+ * thrown out for 7 minutes; both fight, and both are out for 12.
+ */
+export function choose(yard: Yard, uid: string, now: number, choice: Choice): { yard: Yard; outcome: DuelOutcome | null } {
   const r = touch(yard, uid, now);
   const y = r.yard;
-  const others = othersPresent(y, uid, now).sort();
-  if (y.status !== 'active' || y.eating || r.interrupted || !others.length) return { yard, victimUid: null };
-  const victimUid = others[Math.min(others.length - 1, Math.floor(Math.max(0, pick) * others.length))];
+  const rival = r.interrupted.length ? null : duelRival(y, uid, now);
+  if (!rival) throw new RuleError('There is no standoff to settle.');
+  const pair = [uid, rival].sort();
+  const before = y.duel && y.duel.uids.join() === pair.join() ? y.duel : null;
+  if (before?.choices[uid]) throw new RuleError('You have already chosen.');
+  const choices = { ...(before?.choices ?? {}), [uid]: choice };
+  const theirs = choices[rival];
+  if (!theirs) {
+    y.duel = { uids: pair, choices, at: before?.at ?? now };
+    return { yard: y, outcome: null };
+  }
+  y.duel = null;
+  if (choice === 'ally' && theirs === 'ally') {
+    y.pact = { uids: pair, at: now, started: [], meals: {} };
+    return { yard: y, outcome: { kind: 'allied', uids: [pair[0], pair[1]] } };
+  }
+  if (choice === 'fight' && theirs === 'fight') {
+    throwOut(y, uid, rival, now, BRAWL_MS, 'brawl');
+    throwOut(y, rival, uid, now, BRAWL_MS, 'brawl');
+    return { yard: y, outcome: { kind: 'brawl', uids: [pair[0], pair[1]] } };
+  }
+  const [winnerUid, loserUid] = choice === 'fight' ? [uid, rival] : [rival, uid];
+  throwOut(y, loserUid, winnerUid, now, FOUGHT_OFF_MS, 'beaten');
+  return { yard: y, outcome: { kind: 'fought', winnerUid, loserUid } };
+}
+
+export interface ShotResult {
+  yard: Yard;
+  victimUid: string | null;
+  /** The victim was the shooter's ally. */
+  betrayal: boolean;
+  /** Feed the victim lost from a meal in progress (an ally shot while eating). */
+  lost: number;
+}
+
+/**
+ * The standoff's secret way out: `uid` draws a gun on another chicken in the
+ * yard. The victim is thrown out and cannot come back for `waitMs`. Shooting
+ * your own ally, even mid-meal, is a betrayal: they lose the meal and the
+ * shooter wears horns for the rest of the game. `pick` (0 to 1) chooses the
+ * victim when there are several. Returns no victim, and the yard untouched,
+ * when there is nobody to shoot.
+ */
+export function shoot(yard: Yard, uid: string, now: number, pick: number, waitMs: number): ShotResult {
+  const none = { yard, victimUid: null, betrayal: false, lost: 0 };
+  const r = touch(yard, uid, now);
+  const y = r.yard;
+  if (y.status !== 'active' || r.interrupted.length) return none;
+  const ally = allyOf(y, uid);
+  const targets = new Set(othersPresent(y, uid, now));
+  if (ally && mealOf(y, ally)) targets.add(ally); // an ally feeding is in the yard, phone or not
+  const list = [...targets].sort();
+  if (!list.length) return none;
+  const victimUid = list[Math.min(list.length - 1, Math.floor(Math.max(0, pick) * list.length))];
+  const betrayal = victimUid === ally;
+  let lost = 0;
+  if (betrayal) {
+    const e = mealOf(y, victimUid);
+    if (e) {
+      lost = mealPoints(y, now, e);
+      dropMeal(y, victimUid);
+      y.members[victimUid].mealsLost += 1;
+      y.members[victimUid].feedLost = (y.members[victimUid].feedLost ?? 0) + lost;
+    }
+    y.members[uid].traitor = true;
+    // The alliance is over: the traitor's own meal is no longer protected.
+    const mine = y.pact!.meals[uid];
+    if (mine) delete mine.allyUid;
+    y.pact!.broken = true;
+  }
   const wait = Math.max(SHOT_MIN_MS, Math.min(SHOT_MAX_MS, Math.round(waitMs)));
-  y.members[victimUid].lastSeen = 0;
-  y.members[victimUid].shotUntil = now + wait;
-  y.members[victimUid].shotBy = uid;
-  y.shot = { byUid: uid, victimUid, at: now };
-  return { yard: y, victimUid };
+  throwOut(y, victimUid, uid, now, wait, 'shot');
+  y.duel = null;
+  y.shot = { byUid: uid, victimUid, at: now, ...(betrayal ? { betrayal: true } : {}) };
+  tidyPact(y, now);
+  return { yard: y, victimUid, betrayal, lost };
 }
 
 /** Other members who currently have the yard open. */
@@ -301,10 +497,12 @@ export function whyCannotEat(yard: Yard, uid: string, now: number): string | nul
     return yard.startsAt != null ? 'The game has not started yet.' : 'Waiting for the invited chickens to answer.';
   }
   if (isAsleep(yard.sleep, now)) return 'The chickens are asleep.';
-  if (yard.eating) {
-    return yard.eating.uid === uid ? 'You are already eating.' : 'Another chicken is eating.';
-  }
-  if (othersPresent(yard, uid, now).length) return 'Another chicken is watching. Wait them out.';
+  if (isOut(yard, uid, now)) return 'You were thrown out of this yard. Wait before going back in.';
+  if (mealOf(yard, uid)) return 'You are already eating.';
+  // An ally who has not eaten yet may feed alongside the other.
+  const ally = yard.pact?.started.includes(uid) ? null : allyOf(yard, uid);
+  if (meals(yard).some((e) => e.uid !== ally)) return 'Another chicken is eating.';
+  if (othersPresent(yard, uid, now).some((u) => u !== ally)) return 'Another chicken is watching. Wait them out.';
   if (roomLeft(yard, uid) <= 0) return 'There is nothing left to eat.';
   return null;
 }
@@ -327,15 +525,26 @@ export function startEating(yard: Yard, uid: string, now: number, seconds: numbe
   const y = r.yard;
   const why = whyCannotEat(y, uid, now);
   if (why) throw new RuleError(why);
+  let meal: Eating;
   if (y.hardcore) {
-    y.eating = { uid, startedAt: now, endsAt: null, lastBeat: now };
+    meal = { uid, startedAt: now, endsAt: null, lastBeat: now };
   } else {
     if (!Number.isFinite(seconds) || seconds < MIN_MEAL_S) {
       throw new RuleError(`A meal lasts at least ${MIN_MEAL_S} seconds.`);
     }
     const length = Math.min(Math.floor(seconds), maxMealSeconds(y, uid, now));
     if (length <= 0) throw new RuleError('There is no time left to eat.');
-    y.eating = { uid, startedAt: now, endsAt: now + length * 1000, lastBeat: now };
+    meal = { uid, startedAt: now, endsAt: now + length * 1000, lastBeat: now };
+  }
+  const ally = allyOf(y, uid);
+  if (ally && y.pact && !y.pact.started.includes(uid)) {
+    // An allied meal: safe from the ally, and it claims its share of the pile up front.
+    const room = roomLeft(y, uid);
+    const cap = meal.endsAt != null ? (meal.endsAt - now) / 1000 : room;
+    y.pact.meals[uid] = { ...meal, allyUid: ally, ...(Number.isFinite(cap) ? { cap: Math.min(cap, room) } : {}) };
+    y.pact.started.push(uid);
+  } else {
+    y.eating = meal;
   }
   return r;
 }
@@ -344,10 +553,11 @@ export function startEating(yard: Yard, uid: string, now: number, seconds: numbe
 export function stopEating(yard: Yard, uid: string, now: number): Result {
   const r = touch(yard, uid, now);
   const y = r.yard;
-  if (y.eating && y.eating.uid === uid) {
-    y.members[uid].points += mealPoints(y, now);
-    y.eating = null;
+  const e = mealOf(y, uid);
+  if (e) {
+    bankMeal(y, e, now);
     finishIfOver(y, now);
+    tidyPact(y, now);
   }
   return r;
 }
@@ -469,23 +679,20 @@ export type BoardEvent =
  * comparing it with the yard after any rule was applied at `now`: the eater
  * was caught, or the meal ended and was banked.
  */
-export function mealEvents(before: Yard, after: Yard, now: number): BoardEvent[] {
-  const e = before.eating;
-  if (!e || (after.eating && after.eating.startedAt === e.startedAt)) return [];
-  const was = before.members[e.uid];
-  const is = after.members[e.uid];
-  if (!was || !is) return [];
-  if (is.mealsLost > was.mealsLost) {
-    const thief = Object.keys(after.members).find(
-      (u) => after.members[u].mealsStolen > (before.members[u]?.mealsStolen ?? 0),
-    );
-    if (!thief) return [];
-    const taken = after.members[thief].points - (before.members[thief]?.points ?? 0);
-    return [{ kind: 'caught', uid: thief, victimUid: e.uid, lost: mealPoints(before, now), taken, at: now }];
+export function mealEvents(before: Yard, after: Yard, now: number, caught: InterruptEvent[] = []): BoardEvent[] {
+  const out: BoardEvent[] = [];
+  for (const e of meals(before)) {
+    const still = mealOf(after, e.uid);
+    if (still && still.startedAt === e.startedAt) continue;
+    const hit = caught.find((c) => c.victimUid === e.uid);
+    if (hit) {
+      out.push({ kind: 'caught', uid: hit.byUid, victimUid: e.uid, lost: hit.pointsLost, taken: hit.pointsGained, at: now });
+      continue;
+    }
+    const amount = (after.members[e.uid]?.points ?? 0) - (before.members[e.uid]?.points ?? 0);
+    if (amount > 0) out.push({ kind: 'ate', uid: e.uid, amount, at: Math.min(now, mealEnd(before, now, e)) });
   }
-  const amount = is.points - was.points;
-  if (amount <= 0) return [];
-  return [{ kind: 'ate', uid: e.uid, amount, at: Math.min(now, mealEnd(before, now)) }];
+  return out;
 }
 
 /** A yard only counts towards lifetime records if at least two chickens joined it. */
@@ -565,7 +772,8 @@ export function liveTallies(yards: Yard[], now: number): Record<string, Tally> {
 /** Points to show for a chicken right now, including the meal in progress. */
 export function livePoints(yard: Yard, uid: string, now: number): number {
   const banked = yard.members[uid]?.points ?? 0;
-  return yard.eating?.uid === uid ? banked + mealPoints(yard, now) : banked;
+  const e = mealOf(yard, uid);
+  return e ? banked + mealPoints(yard, now, e) : banked;
 }
 
 /** Chicken size from 0 (chick) to 1 (as big as this yard allows). */

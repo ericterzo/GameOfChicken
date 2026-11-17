@@ -2,11 +2,11 @@
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
 import {
-  claimStats, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  chooseSide, claimStats, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
-  countsForRecords, isAsleep, isShot, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
+  allyOf, countsForRecords, duelRival, isAsleep, isOut, mealOf, meals, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
 } from '../game/rules';
 import { yardReport } from '../game/report';
@@ -63,7 +63,10 @@ export const yardScreen: Screen = (root, app, [id]) => {
   let entries: BoardEntry[] = [];
   let lastNotes = '';
 
-  const iAmEating = () => yard?.eating?.uid === uid;
+  const iAmEating = () => !!yard && !!mealOf(yard, uid);
+  const openedAt = Date.now();
+  const toasted = new Set<string>();
+  let leaving = false;
 
   // ----- presence -----
 
@@ -73,8 +76,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     try {
       void logVisit(id, app.profile); // before walking in, so it reads ahead of any catch
       const r = await touchYard(id, uid);
-      const hit = r.interrupted;
-      if (hit) {
+      for (const hit of r.interrupted) {
         const who = r.yard.members[hit.victimUid].username;
         toast(t('You caught {0} eating! Their {1} are gone, you get {2}.', who, num(hit.pointsLost), num(hit.pointsGained)), 'good');
       }
@@ -146,15 +148,16 @@ export const yardScreen: Screen = (root, app, [id]) => {
     // For a moment after a shot, the gun is out and the victim is seen keeling over.
     const bang = y.shot && now - y.shot.at < 3500 && now >= y.shot.at - 5000 ? y.shot : null;
     const inYard = (u: string) =>
-      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || u === uid || y.eating?.uid === u || now - y.members[u].lastSeen < PRESENCE_MS;
+      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || u === uid || !!mealOf(y, u) || now - y.members[u].lastSeen < PRESENCE_MS;
     const chickens: SceneChicken[] = y.memberUids.filter(inYard).map((u) => ({
       look: y.members[u].look,
       name: y.members[u].username,
       size: Math.round(sizeFor(y, u, now) * 50) / 50,
-      eating: y.eating?.uid === u,
+      eating: !!mealOf(y, u),
       me: u === uid,
       gun: bang?.byUid === u,
       shot: bang?.victimUid === u,
+      horns: !!y.members[u].traitor,
     }));
     // The sky follows the viewer's clock; a new picture each minute is plenty.
     const time = Math.floor(now / 60000) * 60000;
@@ -181,10 +184,11 @@ export const yardScreen: Screen = (root, app, [id]) => {
     const goal = y.goal ? ` <span class="muted">${t('of {0}', num(y.goal))}</span>` : '';
     const html = `<h2>${t('Pecking order')}</h2><ol class="board">${rows.map(({ u, m, pts }) => {
       const px = Math.round(30 + 26 * sizeFor(y, u, now));
-      const here = y.status === 'active' && (y.eating?.uid === u ? t('eating') : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
+      const here = y.status === 'active' && (mealOf(y, u) ? t('eating') : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
       const won = y.status === 'finished' && y.winnerUids.includes(u);
-      return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken">${chickenSvg(m.look, { px })}</span>
-        <span class="board-name">${esc(m.username)}${won ? ` <span class="tag-pill win">${t('Winner')}</span>` : ''}
+      const allied = y.status === 'active' && !!allyOf(y, u);
+      return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken">${chickenSvg(m.look, { px, horns: !!m.traitor })}</span>
+        <span class="board-name">${esc(m.username)}${won ? ` <span class="tag-pill win">${t('Winner')}</span>` : ''}${allied ? ` <span class="tag-pill ally">${t('Allied')}</span>` : ''}
           ${here ? `<small class="muted">${here}</small>` : ''}</span>
         <span class="board-pts">${num(pts)}${u === rows[0].u ? goal : ''}</span></li>`;
     }).join('')}</ol>${pendingLine(y)}`;
@@ -203,7 +207,13 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const who = `<strong>${name(e.uid, e.username)}</strong>`;
       if (e.kind === 'chat') return `${who}: ${esc(e.text ?? '')}`;
       if (e.kind === 'visit') return t('{0} was here.', who);
-      if (e.kind === 'shot') return t('{0} shot {1}.', who, `<strong>${name(e.victimUid, e.victimName)}</strong>`);
+      const them = `<strong>${name(e.victimUid, e.victimName)}</strong>`;
+      if (e.kind === 'shot') return e.betrayal ? t('{0} betrayed the alliance with {1} and shot them.', who, them) : t('{0} shot {1}.', who, them);
+      if (e.kind === 'duel') {
+        if (e.outcome === 'allied') return t('{0} and {1} formed an alliance.', who, them);
+        if (e.outcome === 'fought') return t('{0} fought off {1}.', who, them);
+        return t('{0} and {1} fought, and both were thrown out.', who, them);
+      }
       if (e.kind === 'ate') return t('{0} finished a meal of {1} feed.', who, num(e.amount ?? 0));
       return t('{0} caught {1} eating and took {2} of their {3} feed.', who, `<strong>${name(e.victimUid, e.victimName)}</strong>`, num(e.taken ?? 0), num(e.lost ?? 0));
     };
@@ -267,11 +277,15 @@ export const yardScreen: Screen = (root, app, [id]) => {
       return;
     }
 
-    if (y.eating?.uid === uid) {
-      const note = y.hardcore
+    const myMeal = mealOf(y, uid);
+    if (myMeal) {
+      const allyName = myMeal.allyUid ? esc(y.members[myMeal.allyUid]?.username ?? t('A chicken')) : '';
+      const note = allyName
+        ? t('Allied meal: {0} cannot catch you, but any other chicken can. When it is over you leave the yard.', allyName)
+        : y.hardcore
         ? t('Hardcore: keep this screen on. Leaving the app stops the meal and keeps what you ate.')
         : t('You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.');
-      set('eating', `<p class="big"><span id="meal-pts"></span> <small>${t('this meal')}</small></p>
+      set(`eating:${allyName}`, `<p class="big"><span id="meal-pts"></span> <small>${t('this meal')}</small></p>
         <p class="muted" id="meal-left"></p>
         <button class="btn primary" id="stop" type="button">${y.hardcore ? t('Stop feeding') : t('Stop and keep it')}</button>
         <p class="muted small">${note}</p>`, () => {
@@ -282,8 +296,8 @@ export const yardScreen: Screen = (root, app, [id]) => {
           toast(t('Banked {0} points.', num(r.yard.members[uid].points - before)), 'good');
         });
       });
-      text('#meal-pts', `+${num(mealPoints(y, now))}`);
-      text('#meal-left', y.eating.endsAt ? t('Done at {0} · {1} left', clock(y.eating.endsAt), span(y.eating.endsAt - now)) : t('Eating until you stop.'));
+      text('#meal-pts', `+${num(mealPoints(y, now, myMeal))}`);
+      text('#meal-left', myMeal.endsAt ? t('Done at {0} · {1} left', clock(myMeal.endsAt), span(myMeal.endsAt - now)) : t('Eating until you stop.'));
       return;
     }
 
@@ -291,6 +305,33 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const wakeAt = nextWake(y.sleep, now)!;
       set('asleep', `<h2>${t('The chickens are asleep')}</h2><p class="muted" id="wake"></p>`);
       text('#wake', t('Nobody can eat until {0} ({1}).', clock(wakeAt), span(wakeAt - now)));
+      return;
+    }
+
+    // Exactly two chickens and nobody eating: each chooses, in secret, to ally or to fight.
+    const rival = entered ? duelRival(y, uid, now) : null;
+    if (rival) {
+      const them = esc(y.members[rival].username);
+      const duel = y.duel && y.duel.uids.includes(uid) && y.duel.uids.includes(rival) ? y.duel : null;
+      const mine = duel?.choices[uid];
+      set(`duel:${rival}:${mine ?? ''}`, `<h2>${t('Standoff with {0}', them)}</h2>
+        ${mine ? `<p><strong>${mine === 'ally' ? t('You chose to ally.') : t('You chose to fight.')}</strong></p>`
+          : `<p>${t('Choose in secret.')}</p>
+        <div class="row duel"><button class="btn ally" id="ally" type="button">🤝 ${t('Ally')}</button>
+          <button class="btn fight" id="fight" type="button">⚔️ ${t('Fight')}</button></div>`}
+        <p class="muted" id="duel-state"></p>
+        <ul class="duel-rules muted small">
+          <li>${t('Both ally: you feed side by side, each for a secret length of time, and neither can catch the other.')}</li>
+          <li>${t('One fights: the fighter keeps the yard and the other is thrown out for 7 minutes.')}</li>
+          <li>${t('Both fight: both are thrown out for 12 minutes.')}</li>
+        </ul>`, () => {
+        for (const choice of ['ally', 'fight'] as const) {
+          const b = panel.querySelector<HTMLButtonElement>(`#${choice}`);
+          if (b) b.onclick = () => void busy(b, async () => { await chooseSide(id, app.profile, choice); });
+        }
+      });
+      text('#duel-state', duel?.choices[rival] ? t('{0} has made up their mind.', y.members[rival].username)
+        : mine ? t('Waiting for {0} to choose…', y.members[rival].username) : '');
       return;
     }
 
@@ -306,8 +347,14 @@ export const yardScreen: Screen = (root, app, [id]) => {
       return;
     }
 
+    // Allied and not yet fed: the same choice of meal, safe from the ally.
+    const ally = y.pact?.started.includes(uid) ? null : allyOf(y, uid);
+    const allyName = ally ? esc(y.members[ally].username) : '';
+    const heading = ally ? t('You are allied with {0}', allyName) : t('The yard is yours');
+    const allyNote = ally
+      ? `<p class="muted small">${t('Your feeding time is secret. {0} cannot catch you, but any other chicken can. When your meal is over, you leave the yard.', allyName)}</p>` : '';
     if (y.hardcore) {
-      set('ready:hardcore', `<h2>${t('The yard is yours')}</h2>
+      set(`ready:hardcore:${allyName}`, `<h2>${heading}</h2>${allyNote}
         <button class="btn primary" id="start" type="button">${t('Start feeding')}</button>
         <p class="muted small">${t('Hardcore: no timer. Your chicken eats only while this screen stays on.')}</p>`, () => {
         const b = panel.querySelector<HTMLButtonElement>('#start')!;
@@ -316,7 +363,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       return;
     }
 
-    set('ready', `<h2>${t('The yard is yours')}</h2>
+    set(`ready:${allyName}`, `<h2>${heading}</h2>${allyNote}
       <div class="chips" id="timers">${TIMERS.map(([t, s]) => `<button type="button" class="chip" data-s="${s}">${t}</button>`).join('')}</div>
       <label class="inline">${t('or')} <input id="custom-min" type="number" min="1" step="1" inputmode="numeric" placeholder="${t('minutes')}" aria-label="${t('Custom meal length in minutes')}"> ${t('minutes')}</label>
       <button class="btn primary" id="start" type="button"></button>
@@ -351,6 +398,10 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (!alive || !yard) return;
     const now = Date.now();
     const y = settle(yard, now);
+    if (yard.pact?.meals[uid] && !mealOf(y, uid) && !leaving) {
+      leaving = true;
+      void touchYard(id, uid).catch(() => {}).finally(() => { window.setTimeout(() => { leaving = false; }, 5000); });
+    }
     paintHead(y, now);
     paintScene(y, now);
     paintPanel(y, now);
@@ -391,18 +442,40 @@ export const yardScreen: Screen = (root, app, [id]) => {
     }
     clearTimeout(notMember);
     notMember = 0;
-    // Shot in a standoff: out of the yard until the wait is over (the home screen shows how long).
-    if (isShot(next, uid, Date.now())) {
-      toast(t('You have been shot by {0}! You are out of the yard for {1}.',
-        next.members[next.members[uid].shotBy ?? '']?.username ?? t('A chicken'), span(next.members[uid].shotUntil! - Date.now())), 'bad');
+    // Thrown out (shot, or after a standoff): out of the yard until the wait is over (the home screen shows how long).
+    const me = next.members[uid];
+    if (isOut(next, uid, Date.now())) {
+      const by = next.members[me.outBy ?? '']?.username ?? t('A chicken');
+      const left = span(me.outUntil! - Date.now());
+      toast(me.outWhy === 'beaten' ? t('{0} chose to fight and threw you out! You are out of the yard for {1}.', by, left)
+        : me.outWhy === 'brawl' ? t('You both chose to fight! You and {0} are out of the yard for {1}.', by, left)
+        : next.shot?.betrayal && next.shot.victimUid === uid ? t('Betrayed! Your ally {0} shot you. You are out of the yard for {1}.', by, left)
+        : t('You have been shot by {0}! You are out of the yard for {1}.', by, left), 'bad');
       app.go('#/');
       return;
     }
     const prev = yard;
     yard = next;
+    // My allied meal is over (eaten up, or stopped): the chicken leaves the yard.
+    if (prev?.pact?.meals[uid] && !mealOf(next, uid) && me.mealsLost === prev.members[uid].mealsLost) {
+      toast(t('Your allied meal is over and your chicken leaves the yard. Banked {0} points.', num(me.points - prev.members[uid].points)), 'good');
+      app.go('#/');
+      return;
+    }
     if (!stopBoard) {
       notice.hidden = false;
-      stopBoard = watchBoard(id, (list) => { entries = list; paint(); });
+      stopBoard = watchBoard(id, (list) => {
+        entries = list;
+        // How a standoff of mine ended, for whoever did not make the last choice.
+        for (const e of list) {
+          if (e.kind !== 'duel' || e.at < openedAt - 5000 || toasted.has(e.id) || (e.uid !== uid && e.victimUid !== uid)) continue;
+          toasted.add(e.id);
+          const other = e.uid === uid ? e.victimName : e.username;
+          if (e.outcome === 'allied') toast(t('You and {0} are allies! Choose how long to feed; it stays secret.', other), 'good');
+          else if (e.outcome === 'fought' && e.uid === uid) toast(t('{0} offered an alliance, but you fought them off. The yard is yours.', other), 'good');
+        }
+        paint();
+      });
     }
     if (prev && next.members[uid].mealsLost > prev.members[uid].mealsLost) {
       toast(t('Caught! Another chicken walked in and your meal is gone.'), 'bad');
@@ -411,7 +484,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       // First sight of the yard: walk in (this is what interrupts an eater).
       void enter().then(() => { entered = true; paint(); });
       beat = window.setInterval(() => void enter(), next.hardcore ? 10_000 : 15_000);
-    } else if (next.eating && next.eating.uid !== uid) {
+    } else if (meals(next).some((e) => e.uid !== uid && e.allyUid !== uid)) {
       // Someone started while I am standing here (my presence had lapsed).
       void enter();
     }
@@ -430,9 +503,10 @@ export const yardScreen: Screen = (root, app, [id]) => {
     e.preventDefault();
     const input = noteForm.elements.namedItem('text') as HTMLInputElement;
     void busy(noteForm.querySelector('button'), async () => {
-      const victim = await postNote(id, app.profile, input.value);
+      const shot = await postNote(id, app.profile, input.value);
       input.value = '';
-      if (victim) toast(t('Bang! You shot {0}. The yard is yours for a few minutes.', victim), 'good');
+      if (shot?.betrayal) toast(t('Bang! You betrayed {0}. The whole yard will see your horns.', shot.victim), 'good');
+      else if (shot) toast(t('Bang! You shot {0}. The yard is yours for a few minutes.', shot.victim), 'good');
     });
   };
 

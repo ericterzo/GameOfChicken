@@ -87,7 +87,8 @@ service cloud.firestore {
 
       function settingsUnchanged() {
         return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
-                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids', 'shot'])
+                                  'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids', 'shot',
+                                  'duel', 'pact'])
           && clockOk()
           && !(after().status == 'waiting' && before().status != 'waiting');
       }
@@ -128,6 +129,18 @@ service cloud.firestore {
               ? after().eating.endsAt == null
               : after().eating.endsAt > after().eating.startedAt && after().eating.endsAt <= after().endsAt)
         );
+      }
+
+      // Allied meals: a chicken can only start (or keep alive) its own, starting now.
+      function pactMeals(d) { return d.get('pact', null) == null ? {} : d.pact.get('meals', {}); }
+      function pactOk() {
+        let diff = pactMeals(after()).diff(pactMeals(before()));
+        let added = diff.addedKeys();
+        return added.union(diff.changedKeys()).hasOnly([me()])
+          && (!(me() in added) || (
+            pactMeals(after())[me()].uid == me()
+            && pactMeals(after())[me()].startedAt > nowMs() - slack()
+            && pactMeals(after())[me()].startedAt < nowMs() + slack()));
       }
 
       function memberMove() {
@@ -184,6 +197,7 @@ service cloud.firestore {
         && settingsUnchanged()
         && (memberMove() || joining() || declining())
         && mealOk()
+        && pactOk()
         && frozenOk()
         && claimsOk();
 
@@ -212,8 +226,13 @@ service cloud.firestore {
               && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'lost', 'taken'])
               && entry().uid == me())
             || (entry().kind == 'shot'
-              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName'])
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'betrayal', 'lost'])
               && entry().uid == me() && entry().at > nowMs() - slack())
+            || (entry().kind == 'duel'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'outcome'])
+              && entry().outcome in ['allied', 'fought', 'brawl']
+              && (entry().uid == me() || entry().victimUid == me())
+              && entry().at > nowMs() - slack())
           );
       }
     }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, shoot, sizeFor, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
+  RuleError, settle, shoot, sizeFor, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -55,7 +55,7 @@ describe('interruption', () => {
     expect(r.yard.members.a.points).toBe(0);
     expect(r.yard.members.b.points).toBe(33);
     expect(r.yard.eating).toBeNull();
-    expect(r.interrupted).toEqual({ victimUid: 'a', byUid: 'b', pointsLost: 100, pointsGained: 33 });
+    expect(r.interrupted).toEqual([{ victimUid: 'a', byUid: 'b', pointsLost: 100, pointsGained: 33 }]);
     expect(r.yard.members.a.mealsLost).toBe(1);
     expect(r.yard.members.b.mealsStolen).toBe(1);
   });
@@ -74,7 +74,7 @@ describe('interruption', () => {
     let y = startEating(yard(), 'a', s(0), 30).yard;
     y = leave(y, 'a');
     const r = touch(y, 'b', s(31));
-    expect(r.interrupted).toBeNull();
+    expect(r.interrupted).toEqual([]);
     expect(r.yard.members.a.points).toBe(30);
     expect(r.yard.members.b.points).toBe(0);
   });
@@ -90,7 +90,7 @@ describe('interruption', () => {
   it("the eater's own return does not interrupt", () => {
     let y = startEating(yard(), 'a', s(0), 600).yard;
     const r = touch(y, 'a', s(50));
-    expect(r.interrupted).toBeNull();
+    expect(r.interrupted).toEqual([]);
     expect(r.yard.eating).not.toBeNull();
   });
 });
@@ -118,7 +118,7 @@ describe('getting caught, start to finish', () => {
   it('takes every point of that meal and nothing from earlier meals', () => {
     const { y } = scene('fatHen');
     const r = touch(y, 'b', s(500));
-    expect(r.interrupted!.pointsLost).toBe(300);
+    expect(r.interrupted[0].pointsLost).toBe(300);
     expect(r.yard.members.a.points).toBe(100);
     expect(livePoints(r.yard, 'a', s(500))).toBe(100);
     expect(r.yard.eating).toBeNull();
@@ -283,7 +283,7 @@ describe('hardcore', () => {
     y = touch(y, 'a', s(20)).yard;
     expect(settle(y, s(44)).eating).not.toBeNull();
     const r = touch(y, 'b', s(46));
-    expect(r.interrupted).toBeNull();
+    expect(r.interrupted).toEqual([]);
     expect(r.yard.members.a.points).toBe(20);
   });
 
@@ -326,7 +326,7 @@ describe('sleep hours', () => {
     expect(y.eating!.endsAt).toBe(s(10 * HOUR));
     y = leave(y, 'a');
     const r = touch(y, 'b', s(12 * HOUR));
-    expect(r.interrupted).toBeNull();
+    expect(r.interrupted).toEqual([]);
     expect(r.yard.members.a.points).toBe(HOUR);
   });
 });
@@ -421,7 +421,7 @@ describe('notice board events', () => {
   it('notes who caught whom, what was lost and what was taken', () => {
     const before = leave(startEating(yard(), 'a', s(0), 600).yard, 'a');
     const r = touch(before, 'b', s(90));
-    expect(mealEvents(before, r.yard, s(90))).toEqual([{ kind: 'caught', uid: 'b', victimUid: 'a', lost: 90, taken: 30, at: s(90) }]);
+    expect(mealEvents(before, r.yard, s(90), r.interrupted)).toEqual([{ kind: 'caught', uid: 'b', victimUid: 'a', lost: 90, taken: 30, at: s(90) }]);
     // Nothing more to say about the yard afterwards.
     expect(mealEvents(r.yard, touch(r.yard, 'a', s(95)).yard, s(95))).toEqual([]);
   });
@@ -493,8 +493,8 @@ describe('the gun', () => {
     expect(() => touch(y, 'b', s(60))).toThrow(RuleError);
     expect(() => startEating(y, 'b', s(60), 30)).toThrow(RuleError);
     expect(touch(y, 'b', s(186)).yard.members.b.lastSeen).toBe(s(186)); // back after the wait
-    expect(shoot(standoff(), 'a', s(5), 0, 1).yard.members.b.shotUntil).toBe(s(5) + 120_000);
-    expect(shoot(standoff(), 'a', s(5), 0, 9e9).yard.members.b.shotUntil).toBe(s(5) + 240_000);
+    expect(shoot(standoff(), 'a', s(5), 0, 1).yard.members.b.outUntil).toBe(s(5) + 120_000);
+    expect(shoot(standoff(), 'a', s(5), 0, 9e9).yard.members.b.outUntil).toBe(s(5) + 240_000);
   });
 
   it('does nothing without a standoff, and the shot cannot shoot back', () => {
@@ -504,5 +504,84 @@ describe('the gun', () => {
     expect(shoot(eating, 'b', s(5), 0, 180_000).victimUid).toBeNull(); // walking in on a meal is a catch, not a standoff
     const { yard: y } = shoot(standoff(), 'a', s(5), 0, 180_000);
     expect(() => shoot(y, 'b', s(6), 0, 180_000)).toThrow(RuleError);
+  });
+});
+
+describe('ally or fight', () => {
+  const standoff = (over: Partial<NewYard> = {}) => touch(touch(yard(over), 'a', s(0)).yard, 'b', s(1)).yard;
+
+  it('waits for both secret choices, and an alliance lets both feed side by side', () => {
+    const one = choose(standoff(), 'a', s(2), 'ally');
+    expect(one.outcome).toBeNull();
+    expect(() => choose(one.yard, 'a', s(3), 'fight')).toThrow(RuleError); // no changing your mind
+    const both = choose(one.yard, 'b', s(4), 'ally');
+    expect(both.outcome).toEqual({ kind: 'allied', uids: ['a', 'b'] });
+    expect(allyOf(both.yard, 'a')).toBe('b');
+    expect(duelRival(both.yard, 'a', s(5))).toBeNull();
+    // Each picks a secret length and they feed together; neither catches the other.
+    let y = startEating(both.yard, 'a', s(10), 60).yard;
+    expect(why(y, 'b', s(11))).toBeNull();
+    y = startEating(y, 'b', s(11), 600).yard;
+    y = touch(touch(y, 'a', s(20)).yard, 'b', s(21)).yard;
+    expect(mealOf(y, 'a')?.allyUid).toBe('b');
+    expect(mealOf(y, 'b')?.allyUid).toBe('a');
+    // When Anna's meal is over she has eaten it all and left the yard.
+    y = settle(y, s(80));
+    expect(y.members.a.points).toBe(60);
+    expect(y.members.a.lastSeen).toBe(0);
+    expect(mealOf(y, 'b')).not.toBeNull();
+    // Anyone else still catches an allied chicken.
+    const r = touch(join(y, 'c', 'Carl', look, s(100)), 'c', s(100));
+    expect(r.interrupted).toEqual([{ victimUid: 'b', byUid: 'c', pointsLost: 89, pointsGained: 29 }]);
+    expect(r.yard.pact).toBeNull();
+  });
+
+  it('throws out a chicken that offers an alliance to one that fights, and both when both fight', () => {
+    const fought = choose(choose(standoff(), 'a', s(2), 'fight').yard, 'b', s(3), 'ally');
+    expect(fought.outcome).toEqual({ kind: 'fought', winnerUid: 'a', loserUid: 'b' });
+    expect(fought.yard.members.b).toMatchObject({ outUntil: s(3) + 7 * 60_000, outBy: 'a', outWhy: 'beaten', lastSeen: 0 });
+    expect(why(fought.yard, 'a', s(4))).toBeNull(); // the yard is Anna's
+    expect(() => touch(fought.yard, 'b', s(300))).toThrow(RuleError);
+    const brawl = choose(choose(standoff(), 'a', s(2), 'fight').yard, 'b', s(3), 'fight');
+    expect(brawl.outcome).toEqual({ kind: 'brawl', uids: ['a', 'b'] });
+    expect(brawl.yard.members.a).toMatchObject({ outUntil: s(3) + 12 * 60_000, outWhy: 'brawl' });
+    expect(brawl.yard.members.b).toMatchObject({ outUntil: s(3) + 12 * 60_000, outWhy: 'brawl' });
+  });
+
+  it('only offers the choice to exactly two chickens with nobody eating', () => {
+    const three = touch(join(standoff(), 'c', 'Carl', look, s(2)), 'c', s(2)).yard;
+    expect(duelRival(three, 'a', s(3))).toBeNull();
+    expect(() => choose(three, 'a', s(3), 'ally')).toThrow(RuleError);
+    expect(duelRival(touch(yard(), 'a', s(0)).yard, 'a', s(1))).toBeNull(); // alone
+    // A half-made choice lapses when the other chicken walks away.
+    const half = choose(standoff(), 'a', s(2), 'fight').yard;
+    expect(settle(leave(half, 'b'), s(3)).duel).toBeNull();
+  });
+
+  it('shares the pile between allies in Last Grain', () => {
+    let y = standoff({ mode: 'lastGrain', goal: 100 });
+    y = choose(choose(y, 'a', s(2), 'ally').yard, 'b', s(3), 'ally').yard;
+    y = startEating(y, 'a', s(10), 80).yard;
+    y = startEating(y, 'b', s(11), 600).yard;
+    expect(mealOf(y, 'b')!.endsAt).toBe(s(11 + 20)); // only 20 feed was left unclaimed
+    y = settle(y, s(200));
+    expect(y.members.a.points + y.members.b.points).toBe(100);
+    expect(y.status).toBe('finished');
+  });
+
+  it('makes shooting your ally a betrayal: the ally loses the meal, the traitor gets horns', () => {
+    let y = choose(choose(standoff(), 'a', s(2), 'ally').yard, 'b', s(3), 'ally').yard;
+    y = startEating(y, 'a', s(10), 600).yard;
+    y = startEating(y, 'b', s(11), 600).yard;
+    const shot = shoot(y, 'a', s(41), 0, 180_000);
+    expect(shot).toMatchObject({ victimUid: 'b', betrayal: true, lost: 30 });
+    expect(shot.yard.members.a.traitor).toBe(true);
+    expect(shot.yard.members.b).toMatchObject({ outWhy: 'shot', outBy: 'a', feedLost: 30, mealsLost: 1 });
+    expect(mealOf(shot.yard, 'b')).toBeNull();
+    expect(mealOf(shot.yard, 'a')?.allyUid).toBeUndefined(); // no longer protected
+    expect(shot.yard.shot).toEqual({ byUid: 'a', victimUid: 'b', at: s(41), betrayal: true });
+    // Back after the wait, Ben catches the traitor.
+    const back = touch(shot.yard, 'b', s(41 + 181));
+    expect(back.interrupted[0]).toMatchObject({ victimUid: 'a', byUid: 'b' });
   });
 });
