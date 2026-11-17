@@ -6,7 +6,7 @@ import {
   signOut as fbSignOut,
 } from 'firebase/auth';
 import {
-  addDoc, arrayRemove, arrayUnion, Bytes, collection, deleteDoc, setDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
+  addDoc, arrayRemove, arrayUnion, Bytes, collection, deleteDoc, documentId, setDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
   runTransaction, updateDoc, where, writeBatch, type Transaction,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -27,6 +27,8 @@ export interface Profile {
   stats: Stats;
   /** Accessories earned by playing in another language: 'eyepatch', 'hand'. */
   unlocked: string[];
+  /** When this player's app last said it was open (0 once closed). */
+  onlineAt: number;
 }
 
 export interface Unlocks { eyepatch: boolean; hand: boolean; crown: boolean; bigCrown: boolean }
@@ -194,11 +196,49 @@ function toProfile(uid: string, data: Record<string, unknown>): Profile {
     friends: (data.friends as string[]) ?? [],
     stats: readStats(data.stats as Partial<Stats> | undefined),
     unlocked: (data.unlocked as string[]) ?? [],
+    onlineAt: typeof data.onlineAt === 'number' ? data.onlineAt : 0,
   };
 }
 
 export function watchProfile(uid: string, cb: (p: Profile | null) => void): () => void {
   return onSnapshot(doc(db, 'users', uid), (snap) => cb(snap.exists() ? toProfile(uid, snap.data()) : null));
+}
+
+// ---------- who is online ----------
+
+/** A player counts as online for this long after their app last said so. */
+export const ONLINE_MS = 3 * 60_000;
+/** How often an open app says so. */
+export const ONLINE_BEAT_MS = 2 * 60_000;
+
+/** Tell friends my app is open (or closed). Best effort. */
+export async function setOnline(uid: string, on: boolean): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'users', uid), { onlineAt: on ? Date.now() : 0 });
+  } catch {
+    /* offline, or signed out meanwhile */
+  }
+}
+
+/** Watch a set of players' profiles (at most 30), e.g. my friends, for the home yard. */
+export function watchProfiles(uids: string[], cb: (profiles: Profile[]) => void): () => void {
+  const ids = uids.slice(0, 30);
+  if (!ids.length) { cb([]); return () => {}; }
+  return onSnapshot(query(collection(db, 'users'), where(documentId(), 'in', ids)),
+    (snap) => cb(snap.docs.map((d) => toProfile(d.id, d.data()))), () => cb([]));
+}
+
+/** Which of these players have a meal going right now, in any yard. */
+export async function whoIsEating(uids: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (!uids.length) return out;
+  const snap = await getDocs(query(collection(db, 'yards'), where('status', '==', 'active')));
+  const now = Date.now();
+  for (const d of snap.docs) {
+    const y = rules.settle(d.data() as Yard, now);
+    for (const u of uids) if (rules.mealOf(y, u)) out.add(u);
+  }
+  return out;
 }
 
 export async function getProfiles(uids: string[]): Promise<Profile[]> {

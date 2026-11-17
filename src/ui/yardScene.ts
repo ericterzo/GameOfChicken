@@ -53,8 +53,8 @@ const SPOTS: [number, number][] = [
 ];
 /** Where thrown-out chickens lurk: far back, on the clear ground beside the coop, the pile and the bale. */
 const LURK_SPOTS: [number, number][] = [
-  [-91, -46], [94, -44], [182, -42], [-76, -62], [106, -60], [190, -60],
-  [-104, -32], [80, -30], [170, -26], [-62, -50], [120, -48], [196, -28],
+  [-91, -46], [94, -44], [168, -42], [-76, -62], [110, -60], [160, -62],
+  [-104, -32], [80, -30], [150, -26], [-62, -50], [126, -46], [172, -24],
 ];
 const LURK_SCALE = 0.55;
 /** How big a chicken is drawn: by its score, or small and far away while it lurks. */
@@ -396,7 +396,7 @@ function chicken(c: SceneChicken, spot: [number, number]): string {
   const top = -(c.look.crown === 'big' ? 120 : c.horns ? 102 : 94) * k - 6; // the grand crown towers over the name
   return `<g transform="translate(${PX + dx} ${PY + dy})"${c.uid ? ` data-uid="${esc(c.uid)}"` : ''} class="${c.me ? 'ck-me' : ''}${c.lurking ? ' lurker' : ''}">
     <ellipse cx="0" cy="0" rx="${f1(27 * k)}" ry="${f1(4.5 * k)}" fill="#000" fill-opacity="0.16"/>
-    ${c.me ? `<rect x="${f1(-34 * k)}" y="${f1(-96 * k)}" width="${f1(68 * k)}" height="${f1(98 * k)}" fill="transparent"/>` : ''}
+    ${c.uid ? `<rect x="${f1(-34 * k)}" y="${f1(-96 * k)}" width="${f1(68 * k)}" height="${f1(98 * k)}" fill="transparent"/>` : ''}
     <g transform="scale(${(flip * k).toFixed(3)} ${k.toFixed(3)}) translate(-48 -94)">
       <g class="${c.shot ? 'ck-shot' : c.eating ? 'pecking' : ''}">${chickenParts(c.look, { asleep: c.shot, horns: c.horns })}</g>
       ${c.gun ? GUN : ''}
@@ -478,7 +478,16 @@ export function yardScene(o: SceneOptions): string {
   const hour = hourOf(o.time ?? Date.now());
   const light = daylight(hour);
   const near = o.chickens.filter((c) => !c.lurking).slice(0, SPOTS.length).map((c, i) => ({ c, spot: SPOTS[i] }));
-  const far = o.chickens.filter((c) => c.lurking).slice(0, LURK_SPOTS.length).map((c, i) => ({ c, spot: LURK_SPOTS[i] }));
+  // Each lurker takes the free spot farthest from the chickens already standing, so names do not pile up.
+  const taken = near.map((p) => p.spot);
+  const free = [...LURK_SPOTS];
+  const far = o.chickens.filter((c) => c.lurking).slice(0, LURK_SPOTS.length).map((c) => {
+    const gap = (q: [number, number]) => Math.min(999, ...taken.map((t) => Math.abs(t[0] - q[0]) + Math.abs(t[1] - q[1]) / 2));
+    free.sort((a, b) => gap(b) - gap(a));
+    const spot = free.shift()!;
+    taken.push(spot);
+    return { c, spot };
+  });
   const placed = [...far, ...near];
   placed.sort((a, b) => a.spot[1] - b.spot[1]);
   const behind = placed.filter((p) => p.spot[1] < 0);
@@ -502,8 +511,10 @@ export function yardScene(o: SceneOptions): string {
     ${trough()}
     ${tuft(12, 300, 1.5, true)}${tuft(96, 301, 1.2)}${tuft(380, 300, 1.7, true)}${tuft(354, 301, 1.1)}${tuft(206, 302, 1)}
     ${cosy}
-    ${lights(light, asleep)}
-    ${asleep ? '' : placed.filter((p) => p.c.bubble || p.c.crying).map((p) => bubble(...bubbleAnchor(p.c, p.spot), p.c)).join('')}
-    ${o.caption ? caption(o.caption) : ''}
+    <g pointer-events="none">
+      ${lights(light, asleep)}
+      ${asleep ? '' : placed.filter((p) => p.c.bubble || p.c.crying).map((p) => bubble(...bubbleAnchor(p.c, p.spot), p.c)).join('')}
+      ${o.caption ? caption(o.caption) : ''}
+    </g>
   </svg>`;
 }

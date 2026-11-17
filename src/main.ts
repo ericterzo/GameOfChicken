@@ -1,6 +1,6 @@
 import './style.css';
 import type { App, Screen } from './app';
-import { isSigningUp, onUser, signOut, unlockGift, watchProfile, type Profile } from './api';
+import { isSigningUp, ONLINE_BEAT_MS, onUser, setOnline, signOut, unlockGift, watchProfile, type Profile } from './api';
 import { configMissing } from './firebase';
 import { authScreen, usernameScreen } from './screens/auth';
 import { helpScreen } from './screens/help';
@@ -75,14 +75,26 @@ function route(): void {
     <main></main>
     <footer class="foot">${t('Signed in as {0}', `<strong>${esc(profile!.username)}</strong>`)} · <button class="link" id="sign-out" type="button">${t('Sign out')}</button></footer>`;
   wireLangMenu(root);
-  root.querySelector<HTMLButtonElement>('#sign-out')!.onclick = () => void signOut();
+  root.querySelector<HTMLButtonElement>('#sign-out')!.onclick = () => void setOnline(uid as string, false).finally(() => void signOut());
   cleanup = screen(root.querySelector('main')!, app, params);
 }
 
 startAnalytics();
 
+// Friends see who has the game open: say so while it is in front, and stop when it is not.
+let onlineBeat = 0;
+function syncOnline(): void {
+  clearInterval(onlineBeat);
+  if (!uid || document.hidden) { if (uid) void setOnline(uid, false); return; }
+  void setOnline(uid, true);
+  onlineBeat = window.setInterval(() => { if (uid && !document.hidden) void setOnline(uid, true); }, ONLINE_BEAT_MS);
+}
+document.addEventListener('visibilitychange', syncOnline);
+window.addEventListener('pagehide', () => { if (uid) void setOnline(uid, false); });
+
 onUser((next) => {
   identify(next);
+  if (!next) clearInterval(onlineBeat);
   stopProfile?.();
   stopProfile = null;
   profile = null;
@@ -95,7 +107,7 @@ onUser((next) => {
       profileLoaded = true;
       if (!p) { route(); return; } // no profile yet: being created, or needs a username
       claimGift(p);
-      if (first) route();
+      if (first) { route(); syncOnline(); }
       else {
         const shown = root.querySelector('.foot strong');
         if (shown) shown.textContent = p.username; // a rename shows at once

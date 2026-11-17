@@ -1,12 +1,14 @@
 import type { Screen } from '../app';
 import {
-  claimStats, declineInvite, finalizeYard, hasUnclaimed, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
+  claimStats, declineInvite, finalizeYard, hasUnclaimed, ONLINE_MS, watchProfiles, whoIsEating, type Profile, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
   type InboxMessage, type YardDoc,
 } from '../api';
 import { countsForRecords, isOut, MODE_NAMES, settle, type Member } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
+import { playCry } from '../ui/cries';
+import { music } from '../ui/music';
 import { APP_COMMIT, APP_VERSION, REPO_URL } from '../version';
 import { sceneClock, yardScene } from '../ui/yardScene';
 
@@ -27,6 +29,7 @@ export const homeScreen: Screen = (root, app) => {
     <div id="inbox"></div>
     <div id="invites"></div>
     <section class="card cosy">
+      <button class="btn small music-toggle cosy-music" id="cosy-music" type="button" aria-label="${t('Music')}" title="${t('Music')}">${music.on ? '🎵' : '🔇'}</button>
       <div id="cosy-scene"></div>
       <p class="cosy-caption"></p>
     </section>
@@ -89,13 +92,22 @@ export const homeScreen: Screen = (root, app) => {
     });
   });
 
+  // Friends in my home yard: online ones stand beside me, ones eating elsewhere peck far back.
+  let friends: Profile[] = [];
+  let eating = new Set<string>();
   let lastCosy = '';
   const paintCosy = () => {
     const p = app.profile;
     const now = Date.now();
+    const online = friends.filter((f) => now - f.onlineAt < ONLINE_MS).slice(0, 8);
+    const away = friends.filter((f) => !online.includes(f) && eating.has(f.uid)).slice(0, 6);
     const html = yardScene({
       pile: 0.55, cosy: true, time: Math.floor(now / 60000) * 60000,
-      chickens: [{ look: p.look, name: p.username, size: 0.6, eating: true, me: true }],
+      chickens: [
+        { uid: p.uid, look: p.look, name: p.username, size: 0.6, eating: true, me: true },
+        ...online.map((f) => ({ uid: f.uid, look: f.look, name: f.username, size: 0.6, eating: eating.has(f.uid), me: false })),
+        ...away.map((f) => ({ uid: f.uid, look: f.look, name: f.username, size: 0.4, eating: true, me: false, lurking: true })),
+      ],
     });
     if (html !== lastCosy) {
       lastCosy = html;
@@ -105,6 +117,35 @@ export const homeScreen: Screen = (root, app) => {
     }
     caption.textContent = t('{0} is safe here. The real yards are below.', p.username);
   };
+
+  // Tap any chicken here to hear its battle cry (only on this phone).
+  cosy.addEventListener('click', (e) => {
+    const g = (e.target as Element).closest('[data-uid]');
+    const who = g?.getAttribute('data-uid');
+    if (who) void playCry(who);
+  });
+  const musicBtn = root.querySelector<HTMLButtonElement>('#cosy-music')!;
+  musicBtn.onclick = () => {
+    music.setOn(!music.on);
+    musicBtn.textContent = music.on ? '🎵' : '🔇';
+  };
+  music.setMode('chill'); // the home screen always has the calm music
+
+  let stopFriends: () => void = () => {};
+  let friendKey = '';
+  const followFriends = () => {
+    const key = app.profile.friends.join(',');
+    if (key === friendKey) return;
+    friendKey = key;
+    stopFriends();
+    stopFriends = watchProfiles(app.profile.friends, (list) => { friends = list; paintCosy(); });
+  };
+  const checkEating = () => {
+    void whoIsEating(app.profile.friends).then((set) => { eating = set; paintCosy(); }).catch(() => {});
+  };
+  followFriends();
+  checkEating();
+  const eatingTimer = window.setInterval(checkEating, 60_000);
 
   const paintInbox = (msgs: InboxMessage[]) => {
     if (!msgs.length) { inbox.innerHTML = ''; return; }
@@ -181,7 +222,7 @@ export const homeScreen: Screen = (root, app) => {
 
   paintCosy();
   const stops = [
-    app.onProfile(paintCosy),
+    app.onProfile(() => { followFriends(); paintCosy(); }),
     watchInbox(uid, paintInbox),
     watchMyInvites(uid, (ys) => { invites = ys; paintInvites(); }),
     watchMyYards(uid, (ys) => { yards = ys; loaded = true; housekeeping(); paintYards(); }),
@@ -192,5 +233,5 @@ export const homeScreen: Screen = (root, app) => {
     const now = Date.now();
     if (yards.some((y) => (y.members[uid]?.outUntil ?? 0) > now - 2000)) paintYards();
   }, 1000);
-  return () => { stops.forEach((s) => s()); clearInterval(timer); clearInterval(shotTimer); };
+  return () => { stops.forEach((s) => s()); stopFriends(); clearInterval(timer); clearInterval(shotTimer); clearInterval(eatingTimer); };
 };
