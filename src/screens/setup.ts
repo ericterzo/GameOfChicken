@@ -20,7 +20,7 @@ const lengthOptions = (list: [string, number][]) => list.map(([t, ms]) =>
 /** The "which chicken?" block: personal chicken by default, editable per yard. */
 function chickenPicker(app: App): { node: HTMLElement; get: () => Look } {
   const p = app.profile;
-  const editor = lookEditor(p.look, unlockedFor(p));
+  const editor = lookEditor(p.look, unlockedFor(p), p.uid);
   if (!p.lookEverywhere) {
     const node = el(`<div class="field"><span class="label">${t('Your chicken for this yard')}</span></div>`);
     node.append(editor.node);
@@ -29,7 +29,7 @@ function chickenPicker(app: App): { node: HTMLElement; get: () => Look } {
   let custom = false;
   const node = el(`<div class="field">
     <span class="label">${t('Your chicken')}</span>
-    <div class="own-chicken">${chickenSvg(p.look, { px: 72 })}
+    <div class="own-chicken"><span data-cry="${esc(p.uid)}">${chickenSvg(p.look, { px: 72 })}</span>
       <span>${t('Playing as your personal chicken.')}</span>
       <button type="button" class="link">${t('Change for this yard')}</button></div>
   </div>`);

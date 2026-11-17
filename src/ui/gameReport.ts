@@ -60,7 +60,7 @@ export function reportHtml(yard: Yard, r: YardReport, meUid: string): string {
       p.notes ? t('Notes posted: {0}', num(p.notes)) : '',
     ].filter(Boolean);
     return `<details class="friend report-player" ${p.uid === meUid ? 'open' : ''}>
-      <summary><span class="board-chicken">${chickenSvg(m.look, { px: 44, horns: !!m.traitor })}</span>
+      <summary><span class="board-chicken" data-cry="${esc(p.uid)}">${chickenSvg(m.look, { px: 44, horns: !!m.traitor })}</span>
         <span class="board-name">${name(p.uid)}</span>
         <span class="muted">${num(m.points)}</span></summary>
       <div class="stats">

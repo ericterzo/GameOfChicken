@@ -10,7 +10,7 @@ import { joinScreen, newYardScreen } from './screens/setup';
 import { yardScreen } from './screens/yard';
 import { getLang, LANG_GIFT, langMenu, onLang, t, wireLangMenu } from './i18n';
 import { identify, pageview, startAnalytics } from './analytics';
-import { unlockAudio } from './ui/cries';
+import { playCry, unlockAudio } from './ui/cries';
 import { music } from './ui/music';
 import { esc, toast } from './ui/dom';
 
@@ -134,6 +134,16 @@ onLang(() => {
 });
 
 window.addEventListener('hashchange', route);
+
+// Tap a chicken to hear its battle cry, wherever it is marked with data-cry (pecking
+// order, game report, the chicken designer; not the leaderboard or the flock list).
+document.addEventListener('click', (e) => {
+  const el = (e.target as Element | null)?.closest?.('[data-cry]');
+  const who = el?.getAttribute('data-cry');
+  if (!who) return;
+  if (el!.closest('summary')) e.preventDefault(); // hear the cry without folding the row open or shut
+  void playCry(who);
+});
 
 // Phones only allow sound after a touch: the first one unlocks battle cries.
 const unlock = () => { unlockAudio(); music.start(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };

@@ -239,7 +239,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
         : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
       const won = y.status === 'finished' && y.winnerUids.includes(u);
       const allied = y.status === 'active' && !!allyOf(y, u, now);
-      return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken">${chickenSvg(m.look, { px, horns: !!m.traitor })}</span>
+      return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken" data-cry="${esc(u)}">${chickenSvg(m.look, { px, horns: !!m.traitor })}</span>
         <span class="board-name">${esc(m.username)}${won ? ` <span class="tag-pill win">${t('Winner')}</span>` : ''}${allied ? ` <span class="tag-pill ally">${t('Allied')}</span>` : ''}
           ${here ? `<small class="muted">${here}</small>` : ''}</span>
         <span class="board-pts">${num(pts)}${u === rows[0].u ? goal : ''}</span></li>`;
@@ -603,9 +603,20 @@ export const yardScreen: Screen = (root, app, [id]) => {
   });
 
   // Tap your own chicken to let out your battle cry, for everyone in the yard to hear.
+  // Tapping another chicken lets me hear its cry (just on my phone); tapping my own lets
+  // everyone in the yard hear mine. Works in the waiting room before the start too.
+  const heardAt = new Map<string, number>();
   scene.addEventListener('click', (e) => {
-    const g = (e.target as Element).closest('[data-uid]');
-    if (!g || g.getAttribute('data-uid') !== uid || !yard || Date.now() - lastShout < 5000) return;
+    const who = (e.target as Element).closest('[data-uid]')?.getAttribute('data-uid');
+    if (!who || !yard) return;
+    if (who !== uid) {
+      if (Date.now() - (heardAt.get(who) ?? 0) < 2000) return;
+      heardAt.set(who, Date.now());
+      cry(who);
+      paint();
+      return;
+    }
+    if (Date.now() - lastShout < 5000) return;
     lastShout = Date.now();
     cry(uid);
     paint();

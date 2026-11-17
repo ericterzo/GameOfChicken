@@ -42,7 +42,7 @@ const NO_UNLOCKS: Unlocks = { eyepatch: false, hand: false, crown: false, bigCro
  * A chicken customiser. Call `get()` on the result for the current look.
  * `unlocks` says which accessories this player has earned.
  */
-export function lookEditor(initial: Look, unlocks: Unlocks = NO_UNLOCKS): { node: HTMLElement; get: () => Look } {
+export function lookEditor(initial: Look, unlocks: Unlocks = NO_UNLOCKS, cryUid?: string): { node: HTMLElement; get: () => Look } {
   // Chickens saved before wattles were editable get the look they always had.
   const look: Look = { wattle: 'classic', wattleColor: initial.combColor, ...initial };
   // Only what has been earned, and nothing left undefined (the database refuses that).
@@ -62,6 +62,7 @@ export function lookEditor(initial: Look, unlocks: Unlocks = NO_UNLOCKS): { node
     </div>
   </div>`);
   const preview = node.querySelector('.editor-preview')!;
+  if (cryUid) preview.setAttribute('data-cry', cryUid); // tap your chicken to hear your battle cry
   const paint = () => {
     preview.innerHTML = chickenSvg(look, { px: 150 });
     node.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach((b) => {

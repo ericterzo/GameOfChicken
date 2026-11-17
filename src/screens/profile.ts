@@ -55,7 +55,7 @@ export const chickenScreen: Screen = (root, app) => {
         </form>
       </details>
     </section>`;
-  const editor = lookEditor(p.look, unlockedFor(p));
+  const editor = lookEditor(p.look, unlockedFor(p), p.uid);
   root.querySelector('#editor')!.append(editor.node);
   const save = root.querySelector<HTMLButtonElement>('#save')!;
   save.onclick = () => void busy(save, async () => {
