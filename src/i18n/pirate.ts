@@ -17,8 +17,10 @@ export const pirate: Record<string, string> = {
     'A bird be in the yard only while its cap’n has the yard open, or while it be eatin’. Ye can’t leave a bird behind to stand watch.',
   'A chicken that is shot is thrown out of the yard for 2 to 4 minutes. Your trigger then starts again from ten.':
     'A bird that be shot gets tossed out o’ the yard fer 2 to 4 minutes. Yer trigger then starts again from ten.',
-  'A chicken thrown out of a yard cannot go back in until its time is up. The yard’s row on your home screen says who did it and counts down the wait.':
-    'A bird tossed out o’ a yard can’t go back aboard till its time be up. The yard’s row in yer port says who did it an’ counts down the wait.',
+  'A chicken thrown out of a yard can still come in and watch. It lurks far back by the fence, and everyone sees that it is lurking. Until its time is up it cannot eat or catch anyone. The yard’s row on your home screen says who did it and counts down the wait.':
+    'A bird tossed out o’ a yard can still come aboard an’ watch. It lurks far back by the fence, an’ all can see it lurkin’. Till its time be up it can’t eat or board anyone. The yard’s row in yer port says who did it an’ counts down the wait.',
+  'A chicken who joins a game already under way starts with the average score of the chickens already in it. That head start is not taken from the pile.':
+    'A bird who boards a game already under way starts with the average haul o’ the birds already in it. That head start ain’t taken from the hoard.',
   'A choice cannot be taken back. If either chicken leaves before both have chosen, the choice is forgotten.':
     'A choice can’t be taken back. If either bird leaves afore both have chosen, the choice be forgotten.',
   'A fixed pile of feed. When it is gone, whoever ate the most wins.': 'A fixed hoard o’ grub. When it be gone, the greediest gullet wins.',
@@ -223,12 +225,14 @@ export const pirate: Record<string, string> = {
   'Longest quiet spell': 'Longest dead calm',
   'Looking for that yard…': 'Scannin’ the horizon fer that yard…',
   'Looking for your yards…': 'Scannin’ the horizon fer yer yards…',
+  'lurking': 'lurkin’',
   'Meals kept': 'Meals kept',
-  'Minutes': 'Minutes',
   'minutes': 'minutes',
+  'Minutes': 'Minutes',
   'Most active around {0}': 'Most lively around {0}',
   'Most robbed': 'Most plundered',
   'Most time at the pile': 'Most time at the hoard',
+  'Music': 'Shanties',
   'My chicken': 'Me bird',
   'Name your chicken': 'Name yer bird',
   'Narrowest escapes': 'Narrowest escapes',
@@ -363,7 +367,8 @@ export const pirate: Record<string, string> = {
   'That username is taken.': 'That pirate name be taken.',
   'That yard no longer exists.': 'That yard be sunk.',
   'The back garden': 'Skull Island',
-  'The caught chicken lets out its battle cry and leaves the yard.': 'The caught bird lets loose its battle cry an’ leaves the yard.',
+  'The caught chicken lets out its battle cry. If it was in the yard, it stays, and the standoff starts straight away.':
+    'The caught bird lets loose its battle cry. If it were in the yard, it stays, an’ the standoff starts straight away.',
   'The chicken who opened the yard can also start it early.': 'The cap’n who opened the yard can also weigh anchor early.',
   'The chickens are asleep': 'The birds be in their hammocks',
   'The chickens are asleep.': 'The birds be in their hammocks.',
@@ -373,6 +378,8 @@ export const pirate: Record<string, string> = {
     'The first bird to fatten to the mark wins on the spot. The hoard shrinks as the fattest bird closes in.',
   'The game begins after a wait you choose. Chickens who join early wait in the yard and see the countdown.':
     'The game begins after a wait o’ yer choosin’. Birds who board early wait in the yard and watch the hourglass.',
+  'The game is already under way: you start with {0} points, the average of the chickens already in it.':
+    'The game be already under way: ye start with {0} doubloons, the average o’ the birds already aboard.',
   'The Game of Chicken': 'The Game o’ Chicken',
   'The game only starts once every invited chicken has joined or declined. You can still start it yourself.':
     'The game only sets sail once every summoned bird has boarded or said nay. Ye can still weigh anchor yerself.',
@@ -438,6 +445,7 @@ export const pirate: Record<string, string> = {
   'Waiting for {0} to choose…': 'Waitin’ fer {0} to choose…',
   'Walking in…': 'Swaggerin’ in…',
   'Walking to the yard…': 'Rowin’ to the yard…',
+  'Watch': 'Spy',
   'Wattle': 'Wattle',
   'When exactly two chickens are in the yard and nobody is eating, both see two buttons under the yard: <strong>Ally</strong> and <strong>Fight</strong>.':
     'When exactly two birds be in the yard an’ none be eatin’, both see two buttons under the yard: <strong>Parley</strong> an’ <strong>Fight</strong>.',
@@ -461,18 +469,20 @@ export const pirate: Record<string, string> = {
   'Yard stays open for': 'Yard stays open fer',
   'Yards': 'Yards',
   'Yards you are already in keep the chicken you chose for them.': 'Yards ye already sail in keep the bird ye chose fer ’em.',
-  'you': 'ye',
   'You': 'Ye',
+  'you': 'ye',
   'You and your friends side by side. Tap a column to sort by it; tap again to reverse.':
     'Ye and yer mateys, broadside to broadside. Tap a column to sort by it; tap again to turn about.',
   'You and {0} are allies! Choose how long to feed; it stays secret.': 'Ye an’ {0} be shipmates! Choose how long to feed; it stays secret.',
   'You and {0} fought and were both thrown out. You can go back in {1}.':
     'Ye an’ {0} fought an’ were both tossed overboard. Ye can crawl back in {1}.',
+  'You and {0} fought, and both were thrown out.': 'Ye an’ {0} brawled, an’ both were tossed overboard.',
   'You are a chicken. There is one pile of feed and everyone wants it. Eat while nobody is looking, because the moment another chicken walks in, your meal is gone.':
     'Ye be a chicken. There be one hoard o’ grub and every bird wants it. Eat while no soul be watchin’, fer the moment another bird walks in, yer meal be gone.',
   'You are allied with {0}': 'Ye be shipmates with {0}',
   'You are already eating.': 'Ye be eatin’ already.',
   'You are invited': 'Ye be summoned',
+  'You are lurking': 'Ye be lurkin’',
   'You are not in any yard yet. Start one, or join a friend’s with their code.':
     'Ye sail in no yard yet. Open one, or board a matey’s with their code.',
   'You are not in this yard.': 'Ye be no part o’ this yard.',
@@ -490,6 +500,8 @@ export const pirate: Record<string, string> = {
     'Ye can close the app; yer bird keeps eatin’. Any scallywag who walks in takes the whole meal.',
   'You can invite friends from your flock when starting a yard. They accept or decline from their home screen.':
     'Ye can summon mateys from yer crew when openin’ a yard. They say aye or nay from their own port.',
+  'You can watch from the edge of the yard, but you cannot eat or catch anyone until your time is up.':
+    'Ye can watch from the edge o’ the yard, but ye can’t eat or board anyone till yer time be up.',
   'You caught {0} eating! Their {1} are gone, you get {2}.': 'Ye caught {0} at the grub! Their {1} be gone, and {2} be yer plunder. Yo ho!',
   'You chose to ally.': 'Ye chose to parley.',
   'You chose to fight.': 'Ye chose to fight.',
@@ -503,6 +515,7 @@ export const pirate: Record<string, string> = {
   'You have been shot by {0}. You can go back in {1}.': '{0} shot ye. Ye can crawl back in {1}.',
   'You joined {0}.': 'Ye boarded {0}.',
   'You sign in with the new name and the same password.': 'Ye come aboard with the new name and the same secret word.',
+  'You were shot by {0}.': '{0} shot ye.',
   'You were thrown out of this yard. Wait before going back in.': 'Ye were tossed out o’ this yard. Wait afore goin’ back in.',
   'You win the yard': 'Ye plundered the yard, Cap’n!',
   'Your account is deleted. Goodbye!': 'Ye’ve walked the plank. Fair winds, matey!',
@@ -525,6 +538,7 @@ export const pirate: Record<string, string> = {
   '{0} and {1} formed an alliance.': '{0} an’ {1} struck a parley.',
   '{0} and {1} fought, and both were thrown out.': '{0} an’ {1} brawled, an’ both were tossed overboard.',
   '{0} are in the yard. Nobody eats while another chicken is watching.': '{0} be in the yard. No bird eats while another be watchin’.',
+  '{0} are lurking': '{0} be lurkin’',
   '{0} betrayed the alliance with {1} and shot them.': '{0} betrayed the parley with {1} an’ shot ’em. Treachery!',
   '{0} caught {1} eating and took {2} of their {3} feed.': '{0} caught {1} at the grub and plundered {2} o’ their {3} grub. Arr!',
   '{0} chickens are waiting in the yard.': '{0} birds be waitin’ in the yard.',
@@ -533,10 +547,12 @@ export const pirate: Record<string, string> = {
   '{0} days': '{0} days at sea',
   '{0} finished a meal of {1} feed.': '{0} scoffed a meal o’ {1} grub.',
   '{0} fought off {1}.': '{0} fought off {1}.',
+  '{0} fought you off.': '{0} fought ye off.',
   '{0} fought you off. You can go back in {1}.': '{0} fought ye off. Ye can crawl back in {1}.',
   '{0} has made up their mind.': '{0} has made up their mind.',
   '{0} hours': '{0} hours',
   '{0} is in the yard. Nobody eats while another chicken is watching.': '{0} be in the yard. No bird eats while another be watchin’.',
+  '{0} is lurking': '{0} be lurkin’',
   '{0} is safe here. The real yards are below.': '{0} be safe in port. The real yards lie below.',
   '{0} offered an alliance, but you fought them off. The yard is yours.': '{0} offered parley, but ye fought ’em off. The yard be yers!',
   '{0} shot {1}.': '{0} fired a broadside at {1}. Arr!',
@@ -547,9 +563,4 @@ export const pirate: Record<string, string> = {
   '{0} wins the yard': '{0} plunders the yard',
   '{0} won of {1}': '{0} plundered o’ {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} grub)',
-  'Music': 'Shanties',
-  'The game is already under way: you start with {0} points, the average of the chickens already in it.':
-    'The game be already under way: ye start with {0} doubloons, the average o’ the birds already aboard.',
-  'A chicken who joins a game already under way starts with the average score of the chickens already in it. That head start is not taken from the pile.':
-    'A bird who boards a game already under way starts with the average haul o’ the birds already in it. That head start ain’t taken from the hoard.',
 };

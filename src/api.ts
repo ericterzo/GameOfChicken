@@ -554,8 +554,8 @@ export const MAX_NOTE = 300;
  */
 export interface GunShot { victim: string; betrayal: boolean }
 
-/** Shoot a random other chicken in the yard, if there is one. */
-export async function drawGun(yardId: string, me: Profile, minOthers = 1): Promise<GunShot | null> {
+/** The trigger: shoot a random other chicken, if three or more are still in the yard. */
+export async function drawGun(yardId: string, me: Profile, minOthers = 2): Promise<GunShot | null> {
   return yardTx(async (tx) => {
     const snap = await tx.get(yardRef(yardId));
     if (!snap.exists()) return null;
@@ -578,7 +578,7 @@ export async function drawGun(yardId: string, me: Profile, minOthers = 1): Promi
     });
     return { victim: victimName, betrayal: shot.betrayal };
   }).then((shot) => {
-    if (shot) track('shot', { via: minOthers > 1 ? 'trigger' : 'gun', betrayal: shot.betrayal });
+    if (shot) track('shot', { betrayal: shot.betrayal });
     return shot;
   });
 }
@@ -612,15 +612,11 @@ export async function chooseSide(yardId: string, me: Profile, choice: rules.Choi
   }
 }
 
-/** Post a note. Resolves to the shot fired instead, if the note was "gun" in a standoff. */
-export async function postNote(yardId: string, me: Profile, text: string): Promise<GunShot | null> {
+/** Post a note on the yard's notice board. */
+export async function postNote(yardId: string, me: Profile, text: string): Promise<null> {
   const clean = text.trim().slice(0, MAX_NOTE);
   if (!clean) return null;
   try {
-    if (clean.toLowerCase() === 'gun') {
-      const victim = await drawGun(yardId, me);
-      if (victim) return victim;
-    }
     await addDoc(boardCol(yardId), { kind: 'chat', at: Date.now(), by: me.uid, uid: me.uid, username: me.username, text: clean });
     track('note_posted', { length: clean.length });
     return null;
@@ -721,7 +717,7 @@ export const stopEating = (id: string, uid: string) => act(id, uid, (y, now) => 
 /** Closing the yard screen: best effort, the 30 s presence window covers failures. */
 export async function leaveYard(id: string, uid: string): Promise<void> {
   try {
-    await updateDoc(yardRef(id), { [`members.${uid}.lastSeen`]: 0 });
+    await updateDoc(yardRef(id), { [`members.${uid}.lastSeen`]: 0, [`members.${uid}.lurkingAt`]: 0 });
   } catch {
     /* offline or yard gone: presence simply times out */
   }

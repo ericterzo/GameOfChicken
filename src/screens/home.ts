@@ -164,7 +164,7 @@ export const homeScreen: Screen = (root, app) => {
       return `<a class="yard-row${y.status === 'finished' ? ' closed' : ''}" href="#/yard/${id}">
         <span class="yard-name">${esc(y.name)} ${tags}</span>
         <span class="muted">${line}</span>
-        <span class="yard-go">${shot ? '' : y.status === 'finished' ? t('View') : t('Enter')}</span></a>`;
+        <span class="yard-go">${shot ? t('Watch') : y.status === 'finished' ? t('View') : t('Enter')}</span></a>`;
     };
     list.innerHTML =
       (open.length ? open.map(row).join('') : `<p class="muted">${t('No open yards right now.')}</p>`) +

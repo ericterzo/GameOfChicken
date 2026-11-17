@@ -25,7 +25,7 @@ export function helpScreen(root: HTMLElement): void {
         <li>${t('You get <strong>a third of it</strong>, added to your score straight away.')}</li>
         <li>${t('Only the meal in progress is lost. Points from meals already finished or stopped are safe for good.')}</li>
         <li>${t('A caught chicken shrinks back to the size it had before the meal.')}</li>
-        <li>${t('The caught chicken lets out its battle cry and leaves the yard.')}</li>
+        <li>${t('The caught chicken lets out its battle cry. If it was in the yard, it stays, and the standoff starts straight away.')}</li>
         <li>${t('Nobody is told when they are caught. They find out the next time they open the game.')}</li>
       </ul>
       <p class="callout">${t('That is the game of chicken: a long meal is worth a lot, but every extra minute is another chance for someone to walk in.')}</p>
@@ -74,7 +74,7 @@ export function helpScreen(root: HTMLElement): void {
 
       <h3>${t('Thrown out')}</h3>
       <ul>
-        <li>${t('A chicken thrown out of a yard cannot go back in until its time is up. The yard’s row on your home screen says who did it and counts down the wait.')}</li>
+        <li>${t('A chicken thrown out of a yard can still come in and watch. It lurks far back by the fence, and everyone sees that it is lurking. Until its time is up it cannot eat or catch anyone. The yard’s row on your home screen says who did it and counts down the wait.')}</li>
       </ul>
 
       <h2>${t('Three games')}</h2>

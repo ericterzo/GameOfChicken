@@ -6,7 +6,7 @@ import {
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
-  allyOf, countsForRecords, duelRival, isAsleep, isOut, mealOf, meals, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
+  allyOf, countsForRecords, duelRival, isAsleep, isLurking, isOut, mealOf, meals, livePoints, maxMealSeconds, mealPoints, MIN_MEAL_S, MODE_BLURBS, MODE_NAMES, nextWake,
   othersPresent, pileFraction, PRESENCE_MS, settle, sizeFor, whyCannotEat, type Yard,
 } from '../game/rules';
 import { yardReport } from '../game/report';
@@ -71,6 +71,8 @@ export const yardScreen: Screen = (root, app, [id]) => {
   const openedAt = Date.now();
   const toasted = new Set<string>();
   let leaving = false;
+  let toldOut: number | undefined; // the ban I have already been told about
+  let wasOut = false;
   // Battle cries and speech bubbles.
   const crying = new Map<string, number>(); // uid -> crying until
   let heardCatch = openedAt - 2000;
@@ -177,7 +179,10 @@ export const yardScreen: Screen = (root, app, [id]) => {
     // A caught chicken stays in view while it lets out its cry, then it is gone.
     const isCrying = (u: string) => (crying.get(u) ?? 0) > now;
     const inYard = (u: string) =>
-      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || isCrying(u) || u === uid || !!mealOf(y, u) || now - y.members[u].lastSeen < PRESENCE_MS;
+      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || isCrying(u) || u === uid || !!mealOf(y, u)
+      || now - y.members[u].lastSeen < PRESENCE_MS || isLurking(y, u, now);
+    // Thrown-out chickens watching from the edge (me too, while I wait).
+    const lurks = (u: string) => y.status === 'active' && bang?.victimUid !== u && (isLurking(y, u, now) || (u === uid && isOut(y, uid, now)));
     // A note shows above its writer for two minutes, or until they leave the yard.
     const said = new Map<string, BoardEntry>();
     for (const e of entries) if (e.kind === 'chat' && !said.has(e.uid) && now - e.at < BUBBLE_MS) said.set(e.uid, e);
@@ -187,6 +192,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     };
     const chickens: SceneChicken[] = y.memberUids.filter(inYard).map((u) => ({
       uid: u,
+      lurking: lurks(u),
       bubble: bubbleFor(u),
       crying: isCrying(u),
       look: y.members[u].look,
@@ -200,7 +206,11 @@ export const yardScreen: Screen = (root, app, [id]) => {
     }));
     // The sky follows the viewer's clock; a new picture each minute is plenty.
     const time = Math.floor(now / 60000) * 60000;
-    const html = yardScene({ pile: Math.round(pileFraction(y, now) * 100) / 100, chickens, asleep, time });
+    const lurkers = chickens.filter((c) => c.lurking).map((c) => (c.uid === uid ? t('You') : c.name));
+    const caption = !lurkers.length ? undefined
+      : lurkers.length === 1 ? (lurkers[0] === t('You') ? t('You are lurking') : t('{0} is lurking', lurkers[0]))
+      : t('{0} are lurking', lurkers.join(` ${t('and')} `));
+    const html = yardScene({ pile: Math.round(pileFraction(y, now) * 100) / 100, chickens, asleep, time, caption });
     if (html === lastScene) return;
     lastScene = html;
     // Keep the pecking in step with the clock so redraws do not restart it.
@@ -223,7 +233,9 @@ export const yardScreen: Screen = (root, app, [id]) => {
     const goal = y.goal ? ` <span class="muted">${t('of {0}', num(y.goal))}</span>` : '';
     const html = `<h2>${t('Pecking order')}</h2><ol class="board">${rows.map(({ u, m, pts }) => {
       const px = Math.round(30 + 26 * sizeFor(y, u, now));
-      const here = y.status === 'active' && (mealOf(y, u) ? t('eating') : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
+      const here = y.status === 'active' && (mealOf(y, u) ? t('eating')
+        : isLurking(y, u, now) || (u === uid && isOut(y, uid, now)) ? t('lurking')
+        : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
       const won = y.status === 'finished' && y.winnerUids.includes(u);
       const allied = y.status === 'active' && !!allyOf(y, u, now);
       return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken">${chickenSvg(m.look, { px, horns: !!m.traitor })}</span>
@@ -313,6 +325,22 @@ export const yardScreen: Screen = (root, app, [id]) => {
         const b = panel.querySelector<HTMLButtonElement>('#start-now');
         if (b) b.onclick = () => void busy(b, () => startYardNow(id, uid));
       });
+      return;
+    }
+
+    // Thrown out: watching from the edge, with the start button greyed out until the wait is over.
+    if (y.status === 'active' && isOut(y, uid, now)) {
+      const m = y.members[uid];
+      const by = esc(y.members[m.outBy ?? '']?.username ?? t('A chicken'));
+      const why = m.outWhy === 'beaten' ? t('{0} fought you off.', by)
+        : m.outWhy === 'brawl' ? t('You and {0} fought, and both were thrown out.', by)
+        : t('You were shot by {0}.', by);
+      set(`lurk:${m.outWhy}:${by}:${m.outUntil}`, `<h2>${t('You are lurking')}</h2>
+        <p>${why}</p>
+        <p class="big countdown" id="lurk-left"></p>
+        <button class="btn primary" type="button" disabled>${t('Start feeding')}</button>
+        <p class="muted small">${t('You can watch from the edge of the yard, but you cannot eat or catch anyone until your time is up.')}</p>`);
+      text('#lurk-left', span(m.outUntil! - now));
       return;
     }
 
@@ -435,7 +463,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
 
   function paintTrigger(y: Yard, now: number): void {
     const wrap = root.querySelector<HTMLElement>('#trigger-wrap')!;
-    const show = entered && y.status === 'active' && othersPresent(y, uid, now).length >= 2;
+    const show = entered && y.status === 'active' && !isOut(y, uid, now) && othersPresent(y, uid, now).length >= 2;
     if (wrap.hidden !== !show) {
       wrap.hidden = !show;
       // Down to two: the shoot-out is over and every trigger starts again from ten.
@@ -450,7 +478,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   /** Chill while I eat or have the yard to myself; tense in a standoff; silent once it is over. */
   function paintMusic(y: Yard, now: number): void {
     const ally = allyOf(y, uid, now);
-    const standoff = y.status === 'active' && !isAsleep(y.sleep, now) && !mealOf(y, uid)
+    const standoff = y.status === 'active' && !isAsleep(y.sleep, now) && !mealOf(y, uid) && !isOut(y, uid, now)
       && othersPresent(y, uid, now).some((u) => u !== ally);
     music.setMode(!entered || y.status === 'finished' ? 'off' : standoff ? 'tense' : 'chill');
   }
@@ -459,6 +487,10 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (!alive || !yard) return;
     const now = Date.now();
     const y = settle(yard, now);
+    // My wait is over: step in from the edge straight away (catching anyone eating, as usual).
+    const out = isOut(y, uid, now);
+    if (wasOut && !out && entered) void enter();
+    wasOut = out;
     paintMusic(y, now);
     paintTrigger(y, now);
     if (yard.pact?.meals[uid] && !mealOf(y, uid) && !leaving) {
@@ -507,15 +539,15 @@ export const yardScreen: Screen = (root, app, [id]) => {
     notMember = 0;
     // Thrown out (shot, or after a standoff): out of the yard until the wait is over (the home screen shows how long).
     const me = next.members[uid];
-    if (isOut(next, uid, Date.now())) {
+    // Thrown out (shot, or after a standoff): I watch from the edge until the wait is over.
+    if (isOut(next, uid, Date.now()) && me.outUntil !== toldOut) {
+      toldOut = me.outUntil;
       const by = next.members[me.outBy ?? '']?.username ?? t('A chicken');
       const left = span(me.outUntil! - Date.now());
       toast(me.outWhy === 'beaten' ? t('{0} chose to fight and threw you out! You are out of the yard for {1}.', by, left)
         : me.outWhy === 'brawl' ? t('You both chose to fight! You and {0} are out of the yard for {1}.', by, left)
         : next.shot?.betrayal && next.shot.victimUid === uid ? t('Betrayed! Your ally {0} shot you. You are out of the yard for {1}.', by, left)
         : t('You have been shot by {0}! You are out of the yard for {1}.', by, left), 'bad');
-      app.go('#/');
-      return;
     }
     const prev = yard;
     yard = next;
@@ -545,11 +577,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (c && c.at > heardCatch) {
       heardCatch = c.at;
       c.victims.forEach(cry);
-      if (c.victims.includes(uid)) {
-        toast(t('Caught! Another chicken walked in and your meal is gone.'), 'bad');
-        app.go('#/');
-        return;
-      }
+      if (c.victims.includes(uid)) toast(t('Caught! Another chicken walked in and your meal is gone.'), 'bad');
     }
     // Someone tapped their chicken: their battle cry.
     const sh = next.shout;
@@ -609,10 +637,8 @@ export const yardScreen: Screen = (root, app, [id]) => {
     e.preventDefault();
     const input = noteForm.elements.namedItem('text') as HTMLInputElement;
     void busy(noteForm.querySelector('button'), async () => {
-      const shot = await postNote(id, app.profile, input.value);
+      await postNote(id, app.profile, input.value);
       input.value = '';
-      if (shot?.betrayal) toast(t('Bang! You betrayed {0}. The whole yard will see your horns.', shot.victim), 'good');
-      else if (shot) toast(t('Bang! You shot {0}. The yard is yours for a few minutes.', shot.victim), 'good');
     });
   };
 

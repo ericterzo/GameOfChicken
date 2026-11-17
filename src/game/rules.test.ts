@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countsForRecords, createYard, totalPoints, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, shoot, sizeFor, joinHeadStart, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
+  RuleError, settle, shoot, sizeFor, joinHeadStart, isLurking, othersPresent, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -490,7 +490,7 @@ describe('the gun', () => {
     expect(victimUid).toBe('b');
     expect(y.shot).toEqual({ byUid: 'a', victimUid: 'b', at: s(5) });
     expect(whyCannotEat(y, 'a', s(6))).toBeNull(); // the yard is Anna's now
-    expect(() => touch(y, 'b', s(60))).toThrow(RuleError);
+    expect(touch(y, 'b', s(60)).yard.members.b.lastSeen).toBe(0); // only lurking
     expect(() => startEating(y, 'b', s(60), 30)).toThrow(RuleError);
     expect(touch(y, 'b', s(186)).yard.members.b.lastSeen).toBe(s(186)); // back after the wait
     expect(shoot(standoff(), 'a', s(5), 0, 1).yard.members.b.outUntil).toBe(s(5) + 120_000);
@@ -503,7 +503,7 @@ describe('the gun', () => {
     const eating = leave(startEating(yard(), 'a', s(0), 600).yard, 'a');
     expect(shoot(eating, 'b', s(5), 0, 180_000).victimUid).toBeNull(); // walking in on a meal is a catch, not a standoff
     const { yard: y } = shoot(standoff(), 'a', s(5), 0, 180_000);
-    expect(() => shoot(y, 'b', s(6), 0, 180_000)).toThrow(RuleError);
+    expect(shoot(y, 'b', s(6), 0, 180_000).victimUid).toBeNull(); // the shot one only lurks
   });
 });
 
@@ -592,8 +592,16 @@ describe('ally or fight', () => {
     const fought = choose(choose(standoff(), 'a', s(2), 'fight').yard, 'b', s(3), 'ally');
     expect(fought.outcome).toEqual({ kind: 'fought', winnerUid: 'a', loserUid: 'b' });
     expect(fought.yard.members.b).toMatchObject({ outUntil: s(3) + 7 * 60_000, outBy: 'a', outWhy: 'beaten', lastSeen: 0 });
-    expect(why(fought.yard, 'a', s(4))).toBeNull(); // the yard is Anna's
-    expect(() => touch(fought.yard, 'b', s(300))).toThrow(RuleError);
+    expect(why(fought.yard, 'a', s(4))).toBeNull(); // the yard is Anna's: Ben only lurks
+    // Ben may watch from the edge, but catches nobody and cannot eat until his time is up.
+    const eating = startEating(fought.yard, 'a', s(10), 600).yard;
+    const lurk = touch(eating, 'b', s(300));
+    expect(lurk.interrupted).toEqual([]);
+    expect(isLurking(lurk.yard, 'b', s(301))).toBe(true);
+    expect(othersPresent(lurk.yard, 'a', s(301))).toEqual([]);
+    expect(why(lurk.yard, 'b', s(301))).toBe('You were thrown out of this yard. Wait before going back in.');
+    // Once his seven minutes are up, walking in is a catch as usual.
+    expect(touch(lurk.yard, 'b', s(3 + 7 * 60 + 1)).interrupted[0]).toMatchObject({ victimUid: 'a', byUid: 'b' });
     const brawl = choose(choose(standoff(), 'a', s(2), 'fight').yard, 'b', s(3), 'fight');
     expect(brawl.outcome).toEqual({ kind: 'brawl', uids: ['a', 'b'] });
     expect(brawl.yard.members.a).toMatchObject({ outUntil: s(3) + 12 * 60_000, outWhy: 'brawl' });
@@ -645,13 +653,13 @@ describe('ally or fight', () => {
 });
 
 describe('a caught chicken', () => {
-  it('leaves the yard, and the catch is noted for the yard to act out', () => {
+  it('stays in the yard if it was watching, straight into a standoff, and the catch is noted for the yard to act out', () => {
     // Anna eats while watching; Ben walks in.
     const y = touch(startEating(yard(), 'a', s(0), 600).yard, 'a', s(20)).yard;
     const r = touch(y, 'b', s(30));
-    expect(r.yard.members.a.lastSeen).toBe(0);
+    expect(r.yard.members.a.lastSeen).toBe(s(20));
     expect(r.yard.caught).toEqual({ victims: ['a'], byUid: 'b', at: s(30) });
-    expect(why(r.yard, 'b', s(31))).toBeNull(); // no standoff: the yard is Ben's
+    expect(why(r.yard, 'b', s(31))).toBe('Another chicken is watching. Wait them out.');
   });
 
   it('remembers when each chicken last walked in', () => {

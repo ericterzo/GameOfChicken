@@ -35,6 +35,8 @@ export interface Member {
   feedLost?: number;
   /** Thrown out of the yard until this moment, by whom, and how (see OutReason). */
   outUntil?: number;
+  /** While thrown out, the last moment this chicken was watching the yard from the edge. */
+  lurkingAt?: number;
   outBy?: string;
   outWhy?: OutReason;
   /** Shot an ally: wears red horns in this yard until the game ends. */
@@ -364,8 +366,13 @@ export function settle(yard: Yard, now: number): Yard {
 export function touch(yard: Yard, uid: string, now: number): Result {
   const y = clone(yard);
   if (!y.members[uid]) throw new RuleError('You are not in this yard.');
-  if (isOut(y, uid, now)) throw new RuleError('You were thrown out of this yard. Wait before going back in.');
   const hadAllied = !!y.pact?.meals[uid];
+  if (isOut(y, uid, now)) {
+    // Thrown out: may watch from the edge of the yard, but is not in it. Catches nobody, blocks nobody.
+    settleInPlace(y, now);
+    y.members[uid].lurkingAt = now;
+    return { yard: y, interrupted: [] };
+  }
   settleInPlace(y, now);
   const interrupted: InterruptEvent[] = [];
   // My allied meal has just run out: my chicken leaves the yard, and catches nobody on the way out.
@@ -389,8 +396,7 @@ export function touch(yard: Yard, uid: string, now: number): Result {
       y.members[e.uid].mealsLost += 1;
       y.members[e.uid].feedLost = (y.members[e.uid].feedLost ?? 0) + lost;
       interrupted.push({ victimUid: e.uid, byUid: uid, pointsLost: lost, pointsGained: gained });
-      // A caught chicken lets out its battle cry and leaves the yard.
-      y.members[e.uid].lastSeen = 0;
+      // A caught chicken lets out its battle cry; if it was watching, it stays for the standoff.
     }
     if (interrupted.length) {
       y.caught = { victims: interrupted.map((i) => i.victimUid), byUid: uid, at: now };
@@ -409,9 +415,16 @@ export function isOut(yard: Yard, uid: string, now: number): boolean {
   return (yard.members[uid]?.outUntil ?? 0) > now;
 }
 
+/** True while `uid` is thrown out but watching the yard from its edge. */
+export function isLurking(yard: Yard, uid: string, now: number): boolean {
+  const m = yard.members[uid];
+  return !!m && isOut(yard, uid, now) && now - (m.lurkingAt ?? 0) < PRESENCE_MS;
+}
+
 function throwOut(yard: Yard, uid: string, by: string, now: number, ms: number, why: OutReason): void {
   const m = yard.members[uid];
   m.lastSeen = 0;
+  m.lurkingAt = now; // watching from the edge straight away
   m.outUntil = now + ms;
   m.outBy = by;
   m.outWhy = why;
@@ -500,6 +513,7 @@ export interface ShotResult {
  */
 export function shoot(yard: Yard, uid: string, now: number, pick: number, waitMs: number, minOthers = 1): ShotResult {
   const none = { yard, victimUid: null, betrayal: false, lost: 0 };
+  if (isOut(yard, uid, now)) return none; // a lurker cannot shoot
   const r = touch(yard, uid, now);
   const y = r.yard;
   if (y.status !== 'active' || r.interrupted.length) return none;
@@ -619,7 +633,10 @@ export function stopEating(yard: Yard, uid: string, now: number): Result {
 /** `uid` closes the yard screen: they are no longer present. */
 export function leave(yard: Yard, uid: string): Yard {
   const y = clone(yard);
-  if (y.members[uid]) y.members[uid].lastSeen = 0;
+  if (y.members[uid]) {
+    y.members[uid].lastSeen = 0;
+    y.members[uid].lurkingAt = 0;
+  }
   return y;
 }
 
