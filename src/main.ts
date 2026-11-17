@@ -9,6 +9,7 @@ import { chickenScreen, flockScreen, leaderboardScreen } from './screens/profile
 import { joinScreen, newYardScreen } from './screens/setup';
 import { yardScreen } from './screens/yard';
 import { getLang, LANG_GIFT, langMenu, onLang, t, wireLangMenu } from './i18n';
+import { unlockAudio } from './ui/cries';
 import { esc, toast } from './ui/dom';
 
 const root = document.getElementById('app')!;
@@ -114,6 +115,11 @@ onLang(() => {
 });
 
 window.addEventListener('hashchange', route);
+
+// Phones only allow sound after a touch: the first one unlocks battle cries.
+const unlock = () => { unlockAudio(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
+window.addEventListener('pointerdown', unlock, true);
+window.addEventListener('keydown', unlock, true);
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => void navigator.serviceWorker.register('/sw.js'));

@@ -6,7 +6,7 @@ import {
   signOut as fbSignOut,
 } from 'firebase/auth';
 import {
-  addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
+  addDoc, arrayRemove, arrayUnion, Bytes, collection, deleteDoc, setDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
   runTransaction, updateDoc, where, writeBatch, type Transaction,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -316,6 +316,7 @@ export async function deleteAccount(me: Profile, password: string): Promise<void
     const batch = writeBatch(db);
     inbox.docs.slice(0, 400).forEach((d) => batch.delete(d.ref));
     batch.delete(doc(db, 'users', me.uid));
+    batch.delete(doc(db, 'cries', me.uid));
     batch.delete(doc(db, 'usernames', me.username.toLowerCase()));
     await batch.commit();
     await deleteUser(user);
@@ -434,6 +435,51 @@ export function watchMyInvites(uid: string, cb: (yards: YardDoc[]) => void): () 
       .map((d) => ({ id: d.id, ...(d.data() as Yard) }))
       .filter((y) => y.status === 'waiting' || (y.status === 'active' && y.endsAt > now)));
   });
+}
+
+// ---------- battle cries ----------
+
+/** A battle cry is at most five seconds; this leaves room for any phone's recording format. */
+export const MAX_CRY_BYTES = 150_000;
+export const CRY_SECONDS = 5;
+
+/**
+ * Each cry lives in its own small record, never on the profile, so it is only
+ * downloaded when it is actually played.
+ */
+export async function saveCry(uid: string, recording: Blob): Promise<void> {
+  const audio = new Uint8Array(await recording.arrayBuffer());
+  if (audio.byteLength > MAX_CRY_BYTES) throw new ApiError(t('That recording is too big. Try a shorter one.'));
+  try {
+    await setDoc(doc(db, 'cries', uid), { audio: Bytes.fromUint8Array(audio), mime: (recording.type || 'audio/webm').slice(0, 59), at: Date.now() });
+  } catch (e) {
+    throw friendly(e);
+  }
+}
+
+export async function deleteCry(uid: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'cries', uid));
+  } catch (e) {
+    throw friendly(e);
+  }
+}
+
+/** A chicken's battle cry as playable audio, or null if it has none. */
+export async function getCry(uid: string): Promise<Blob | null> {
+  const snap = await getDoc(doc(db, 'cries', uid));
+  if (!snap.exists()) return null;
+  const d = snap.data() as { audio: Bytes; mime: string };
+  return new Blob([d.audio.toUint8Array() as BlobPart], { type: d.mime });
+}
+
+/** I tap my own chicken: everyone in the yard hears my battle cry. */
+export async function shout(yardId: string, uid: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'yards', yardId), { shout: { uid, at: Date.now() } });
+  } catch {
+    /* only the others miss it */
+  }
 }
 
 // ---------- notice board ----------

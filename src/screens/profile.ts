@@ -1,12 +1,13 @@
 // "My chicken" (the personal chicken) and "Flock" (stats and friends).
 import type { App, Screen } from '../app';
 import {
-  addFriendByUid, deleteAccount, getAllProfiles, getProfiles, hasPassword, removeFriend, renameUser, saveLook,
+  addFriendByUid, CRY_SECONDS, deleteAccount, deleteCry, getCry, saveCry, getAllProfiles, getProfiles, hasPassword, removeFriend, renameUser, saveLook,
   searchPlayers, unlockedFor, withLiveYards, type Profile, type Stats,
 } from '../api';
 import { chickenSvg } from '../ui/chicken';
 import { busy, el, esc, num, toast } from '../ui/dom';
 import { t } from '../i18n';
+import { forgetCry, playBlob, squawk } from '../ui/cries';
 import { lookEditor } from '../ui/lookEditor';
 import { statsTable } from '../ui/statsTable';
 
@@ -21,6 +22,20 @@ export const chickenScreen: Screen = (root, app) => {
         <span><strong>${t('Use this chicken in every yard')}</strong><small>${t('Skip the chicken picker when starting or joining a yard.')}</small></span></label>
       <button class="btn primary" id="save" type="button">${t('Save my chicken')}</button>
       <p class="muted small">${t('Yards you are already in keep the chicken you chose for them.')}</p>
+    </section>
+    <section class="card form" id="cry">
+      <h2>${t('Battle cry')}</h2>
+      <p class="muted small">${t('Record up to {0} seconds. It plays when you are caught eating, and whenever you tap your own chicken in a yard.', CRY_SECONDS)}</p>
+      <div class="row cry-row">
+        <button class="btn" id="cry-rec" type="button">🎙 ${t('Record')}</button>
+        <button class="btn" id="cry-play" type="button">▶ ${t('Play')}</button>
+      </div>
+      <p class="muted small" id="cry-state">${t('Checking…')}</p>
+      <div class="row cry-row" id="cry-draft" hidden>
+        <button class="btn primary" id="cry-save" type="button">${t('Save battle cry')}</button>
+        <button class="btn" id="cry-discard" type="button">${t('Discard')}</button>
+      </div>
+      <button class="link danger" id="cry-delete" type="button" hidden>${t('Delete my battle cry')}</button>
     </section>
     <section class="card form">
       <h2>${t('Account')}</h2>
@@ -48,6 +63,8 @@ export const chickenScreen: Screen = (root, app) => {
     toast(t('Chicken saved.'), 'good');
   });
 
+  wireCry(root, p.uid);
+
   const rename = root.querySelector<HTMLFormElement>('#rename')!;
   rename.onsubmit = (e) => {
     e.preventDefault();
@@ -69,6 +86,90 @@ export const chickenScreen: Screen = (root, app) => {
     });
   };
 };
+
+/** The battle-cry recorder on My chicken: record up to five seconds, listen, then keep or discard it. */
+function wireCry(root: HTMLElement, uid: string): void {
+  const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+  const rec = q<HTMLButtonElement>('#cry-rec');
+  const play = q<HTMLButtonElement>('#cry-play');
+  const state = q<HTMLElement>('#cry-state');
+  const draftRow = q<HTMLElement>('#cry-draft');
+  const del = q<HTMLButtonElement>('#cry-delete');
+  let saved: Blob | null = null;
+  let draft: Blob | null = null;
+  let recorder: MediaRecorder | null = null;
+  let timer = 0;
+
+  const show = () => {
+    draftRow.hidden = !draft;
+    del.hidden = !saved || !!draft;
+    play.disabled = !!recorder;
+    state.textContent = recorder ? '' : draft ? t('Listen to it, then save it or try again.')
+      : saved ? t('Your battle cry is saved.') : t('No battle cry yet: your chicken just squawks.');
+  };
+  void getCry(uid).then((b) => { saved = b; show(); }).catch(() => { state.textContent = ''; });
+
+  const stop = () => { clearInterval(timer); if (recorder?.state === 'recording') recorder.stop(); };
+  rec.onclick = async () => {
+    if (recorder) { stop(); return; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      toast(t('This browser cannot record sound.'), 'bad');
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      toast(t('The microphone is blocked. Allow it for this site in your browser settings, then try again.'), 'bad');
+      return;
+    }
+    const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'].find((m) => MediaRecorder.isTypeSupported(m));
+    const r = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32_000 });
+    const parts: Blob[] = [];
+    r.ondataavailable = (e) => { if (e.data.size) parts.push(e.data); };
+    r.onstop = () => {
+      stream.getTracks().forEach((tr) => tr.stop());
+      recorder = null;
+      draft = new Blob(parts, { type: r.mimeType || type || 'audio/webm' });
+      rec.classList.remove('rec');
+      rec.textContent = `🎙 ${t('Record again')}`;
+      show();
+    };
+    recorder = r;
+    r.start();
+    rec.classList.add('rec');
+    let left = CRY_SECONDS;
+    rec.textContent = `■ ${t('Stop')} · ${left}`;
+    show();
+    state.textContent = t('Recording… let it out!');
+    timer = window.setInterval(() => {
+      left -= 1;
+      if (left <= 0) stop();
+      else rec.textContent = `■ ${t('Stop')} · ${left}`;
+    }, 1000);
+  };
+  play.onclick = () => {
+    const b = draft ?? saved;
+    if (b) void playBlob(b);
+    else void squawk();
+  };
+  q<HTMLButtonElement>('#cry-save').onclick = (e) => void busy(e.currentTarget as HTMLButtonElement, async () => {
+    if (!draft) return;
+    await saveCry(uid, draft);
+    forgetCry(uid);
+    saved = draft;
+    draft = null;
+    show();
+    toast(t('Battle cry saved.'), 'good');
+  });
+  q<HTMLButtonElement>('#cry-discard').onclick = () => { draft = null; show(); };
+  del.onclick = () => void busy(del, async () => {
+    await deleteCry(uid);
+    forgetCry(uid);
+    saved = null;
+    show();
+  });
+}
 
 function statGrid(s: Stats): string {
   const cell = (label: string, value: string) => `<div class="stat"><strong>${value}</strong><span>${label}</span></div>`;

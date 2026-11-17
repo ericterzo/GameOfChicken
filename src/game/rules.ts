@@ -24,6 +24,8 @@ export interface Member {
   look: Look;
   points: number;
   lastSeen: number;
+  /** When this chicken last walked into the yard (after being away). */
+  arrivedAt?: number;
   mealsLost: number;
   mealsStolen: number;
   /** Feed taken from others by catching them, and feed lost by being caught. Absent on older yards. */
@@ -120,6 +122,10 @@ export interface Yard {
   claimedUids?: string[];
   /** The latest shot fired in a standoff (see `shoot`), for the yard to act out. */
   shot?: { byUid: string; victimUid: string; at: number; betrayal?: boolean } | null;
+  /** The latest catch, for the yard to act out: the victims let out their battle cries and leave. */
+  caught?: { victims: string[]; byUid: string; at: number } | null;
+  /** The latest battle cry a chicken let out by tapping itself. */
+  shout?: { uid: string; at: number } | null;
   /** A standoff waiting for its second choice, and an alliance in force. */
   duel?: Duel | null;
   pact?: Pact | null;
@@ -376,9 +382,15 @@ export function touch(yard: Yard, uid: string, now: number): Result {
       y.members[e.uid].mealsLost += 1;
       y.members[e.uid].feedLost = (y.members[e.uid].feedLost ?? 0) + lost;
       interrupted.push({ victimUid: e.uid, byUid: uid, pointsLost: lost, pointsGained: gained });
+      // A caught chicken lets out its battle cry and leaves the yard.
+      y.members[e.uid].lastSeen = 0;
     }
-    if (interrupted.length) finishIfOver(y, now);
+    if (interrupted.length) {
+      y.caught = { victims: interrupted.map((i) => i.victimUid), byUid: uid, at: now };
+      finishIfOver(y, now);
+    }
   }
+  if (now - y.members[uid].lastSeen >= PRESENCE_MS) y.members[uid].arrivedAt = now;
   y.members[uid].lastSeen = now;
   tidyPact(y, now);
   tidyDuel(y, now);

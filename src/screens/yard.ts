@@ -2,7 +2,7 @@
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
 import {
-  chooseSide, claimStats, drawGun, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  chooseSide, claimStats, drawGun, shout, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
@@ -12,6 +12,7 @@ import {
 import { yardReport } from '../game/report';
 import { chickenSvg } from '../ui/chicken';
 import { reportHtml } from '../ui/gameReport';
+import { playCry } from '../ui/cries';
 import { busy, clock, dateTime, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { sceneClock, yardScene, type SceneChicken } from '../ui/yardScene';
@@ -68,6 +69,16 @@ export const yardScreen: Screen = (root, app, [id]) => {
   const openedAt = Date.now();
   const toasted = new Set<string>();
   let leaving = false;
+  // Battle cries and speech bubbles.
+  const crying = new Map<string, number>(); // uid -> crying until
+  let heardCatch = openedAt - 2000;
+  let heardShout = openedAt - 2000;
+  let lastShout = 0;
+  const BUBBLE_MS = 2 * 60_000;
+  const cry = (u: string) => {
+    crying.set(u, Date.now() + 1500);
+    void playCry(u, (ms) => { crying.set(u, Date.now() + ms); paint(); });
+  };
   // With three or more chickens in the yard, a trigger that takes ten presses to cock.
   const COCK = 10;
   const triggerKey = `trigger:${id}:${uid}`;
@@ -154,9 +165,21 @@ export const yardScreen: Screen = (root, app, [id]) => {
     // Before the game begins everyone who has joined is shown waiting together.
     // For a moment after a shot, the gun is out and the victim is seen keeling over.
     const bang = y.shot && now - y.shot.at < 3500 && now >= y.shot.at - 5000 ? y.shot : null;
+    // A caught chicken stays in view while it lets out its cry, then it is gone.
+    const isCrying = (u: string) => (crying.get(u) ?? 0) > now;
     const inYard = (u: string) =>
-      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || u === uid || !!mealOf(y, u) || now - y.members[u].lastSeen < PRESENCE_MS;
+      y.status === 'finished' || y.status === 'waiting' || bang?.victimUid === u || isCrying(u) || u === uid || !!mealOf(y, u) || now - y.members[u].lastSeen < PRESENCE_MS;
+    // A note shows above its writer for two minutes, or until they leave the yard.
+    const said = new Map<string, BoardEntry>();
+    for (const e of entries) if (e.kind === 'chat' && !said.has(e.uid) && now - e.at < BUBBLE_MS) said.set(e.uid, e);
+    const bubbleFor = (u: string) => {
+      const e = said.get(u);
+      return e && e.at >= (y.members[u].arrivedAt ?? 0) ? e.text : undefined; // not from before they last left
+    };
     const chickens: SceneChicken[] = y.memberUids.filter(inYard).map((u) => ({
+      uid: u,
+      bubble: bubbleFor(u),
+      crying: isCrying(u),
       look: y.members[u].look,
       name: y.members[u].username,
       size: Math.round(sizeFor(y, u, now) * 50) / 50,
@@ -499,8 +522,22 @@ export const yardScreen: Screen = (root, app, [id]) => {
         paint();
       });
     }
-    if (prev && next.members[uid].mealsLost > prev.members[uid].mealsLost) {
-      toast(t('Caught! Another chicken walked in and your meal is gone.'), 'bad');
+    // A catch: the caught chickens let out their battle cries (heard by everyone here) and leave.
+    const c = next.caught;
+    if (c && c.at > heardCatch) {
+      heardCatch = c.at;
+      c.victims.forEach(cry);
+      if (c.victims.includes(uid)) {
+        toast(t('Caught! Another chicken walked in and your meal is gone.'), 'bad');
+        app.go('#/');
+        return;
+      }
+    }
+    // Someone tapped their chicken: their battle cry.
+    const sh = next.shout;
+    if (sh && sh.at > heardShout && sh.uid !== uid && Date.now() - sh.at < 10_000) {
+      heardShout = sh.at;
+      cry(sh.uid);
     }
     if (!entered) {
       // First sight of the yard: walk in (this is what interrupts an eater).
@@ -517,6 +554,16 @@ export const yardScreen: Screen = (root, app, [id]) => {
       void claimStats(id).finally(() => { claiming = false; });
     }
     paint();
+  });
+
+  // Tap your own chicken to let out your battle cry, for everyone in the yard to hear.
+  scene.addEventListener('click', (e) => {
+    const g = (e.target as Element).closest('[data-uid]');
+    if (!g || g.getAttribute('data-uid') !== uid || !yard || Date.now() - lastShout < 5000) return;
+    lastShout = Date.now();
+    cry(uid);
+    paint();
+    void shout(id, uid);
   });
 
   const trigger = root.querySelector<HTMLButtonElement>('#trigger')!;

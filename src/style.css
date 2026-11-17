@@ -326,3 +326,13 @@ input:not([type='checkbox']):not([type='radio']), select {
 @keyframes cocked { to { transform: scale(1.03); } }
 @media (prefers-reduced-motion: reduce) { .btn.trigger.cocked { animation: none; } }
 .help h3 { color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 1rem; margin-top: 16px; }
+
+/* Speech bubbles and battle cries */
+.scene .bubble text { font: 600 10.5px system-ui, sans-serif; fill: #3b2a1c; }
+.scene .bubble.crying path { fill: #fff3c4; }
+.scene .ck-me { cursor: pointer; }
+
+/* Recording a battle cry */
+.cry-row { gap: 10px; margin: 10px 0 6px; }
+.cry-row .btn { flex: 1; }
+.btn.rec { background: var(--bad); border-color: #9d2b21; color: #fff; }

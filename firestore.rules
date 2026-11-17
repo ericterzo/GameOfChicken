@@ -79,6 +79,17 @@ service cloud.firestore {
       }
     }
 
+    // Battle cries: anyone signed in may listen; each player keeps only their own, five seconds at most.
+    match /cries/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid == me()
+        && request.resource.data.keys().hasOnly(['audio', 'mime', 'at'])
+        && request.resource.data.audio is bytes
+        && request.resource.data.audio.size() <= 150000
+        && request.resource.data.mime is string && request.resource.data.mime.size() < 60;
+      allow delete: if signedIn() && uid == me();
+    }
+
     match /yards/{yardId} {
       function before() { return resource.data; }
       function after() { return request.resource.data; }
@@ -88,7 +99,7 @@ service cloud.firestore {
       function settingsUnchanged() {
         return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
                                   'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids', 'shot',
-                                  'duel', 'pact'])
+                                  'duel', 'pact', 'caught', 'shout'])
           && clockOk()
           && !(after().status == 'waiting' && before().status != 'waiting');
       }
@@ -141,6 +152,13 @@ service cloud.firestore {
             pactMeals(after())[me()].uid == me()
             && pactMeals(after())[me()].startedAt > nowMs() - slack()
             && pactMeals(after())[me()].startedAt < nowMs() + slack()));
+      }
+
+      // A battle cry let out by tapping your chicken: only your own, and only now.
+      function shoutOk() {
+        return after().get('shout', null) == before().get('shout', null)
+          || (after().shout.uid == me()
+              && after().shout.at > nowMs() - slack() && after().shout.at < nowMs() + slack());
       }
 
       function memberMove() {
@@ -198,6 +216,7 @@ service cloud.firestore {
         && (memberMove() || joining() || declining())
         && mealOk()
         && pactOk()
+        && shoutOk()
         && frozenOk()
         && claimsOk();
 

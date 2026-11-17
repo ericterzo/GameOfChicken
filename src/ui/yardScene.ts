@@ -20,6 +20,12 @@ export interface SceneChicken {
   shot?: boolean;
   /** Shot its own ally: red horns for the rest of the game. */
   horns?: boolean;
+  /** Who this is, so a tap on one's own chicken can be told apart. */
+  uid?: string;
+  /** Something the chicken said lately, shown in a speech bubble. */
+  bubble?: string;
+  /** Letting out its battle cry right now: a speaker in the bubble. */
+  crying?: boolean;
 }
 
 export interface SceneOptions {
@@ -374,14 +380,55 @@ function chicken(c: SceneChicken, spot: [number, number]): string {
   const k = 0.42 + 0.72 * Math.max(0, Math.min(1, c.size));
   const flip = dx > 0 ? -1 : 1;
   const top = -(c.look.crown === 'big' ? 120 : c.horns ? 102 : 94) * k - 6; // the grand crown towers over the name
-  return `<g transform="translate(${PX + dx} ${PY + dy})">
+  return `<g transform="translate(${PX + dx} ${PY + dy})"${c.uid ? ` data-uid="${esc(c.uid)}"` : ''} class="${c.me ? 'ck-me' : ''}">
     <ellipse cx="0" cy="0" rx="${f1(27 * k)}" ry="${f1(4.5 * k)}" fill="#000" fill-opacity="0.16"/>
+    ${c.me ? `<rect x="${f1(-34 * k)}" y="${f1(-96 * k)}" width="${f1(68 * k)}" height="${f1(98 * k)}" fill="transparent"/>` : ''}
     <g transform="scale(${(flip * k).toFixed(3)} ${k.toFixed(3)}) translate(-48 -94)">
       <g class="${c.shot ? 'ck-shot' : c.eating ? 'pecking' : ''}">${chickenParts(c.look, { asleep: c.shot, horns: c.horns })}</g>
       ${c.gun ? GUN : ''}
     </g>
     ${c.gun ? `<text x="0" y="${(top - 17).toFixed(0)}" text-anchor="middle" class="bang">BANG!</text>` : ''}
     <text x="0" y="${top.toFixed(0)}" text-anchor="middle" class="tag${c.me ? ' me' : ''}">${esc(c.name)}</text>
+  </g>`;
+}
+
+/** Where a chicken's speech bubble points: just above its name. */
+function bubbleAnchor(c: SceneChicken, spot: [number, number]): [number, number] {
+  const k = 0.42 + 0.72 * Math.max(0, Math.min(1, c.size));
+  const top = -(c.look.crown === 'big' ? 120 : c.horns ? 102 : 94) * k - 6;
+  return [PX + spot[0], PY + spot[1] + top - (c.gun ? 30 : 13)];
+}
+
+/** Break a note into at most three short lines. */
+function wrap(text: string, width = 22, max = 3): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.replace(/\s+/g, ' ').trim().split(' ')) {
+    const w = word.length > width ? `${word.slice(0, width - 1)}…` : word;
+    if (!line) line = w;
+    else if (line.length + 1 + w.length <= width) line += ` ${w}`;
+    else { lines.push(line); line = w; }
+    if (lines.length === max) break;
+  }
+  if (line && lines.length < max) lines.push(line);
+  const all = text.replace(/\s+/g, ' ').trim();
+  if (lines.join(' ').length < all.length) lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, width - 1)}…`;
+  return lines;
+}
+
+/** A speech bubble pointing down at (x, y). */
+function bubble(x: number, y: number, c: SceneChicken): string {
+  const lines = wrap(`${c.crying ? '🔊 ' : ''}${c.bubble ?? ''}`.trim() || '🔊');
+  const w = Math.max(30, Math.min(150, Math.max(...lines.map((l) => l.length)) * 6.1 + 16));
+  const h = lines.length * 13 + 9;
+  const bx = Math.max(4, Math.min(396 - w, x - w / 2));
+  const by = Math.max(4, y - h - 6);
+  const tip = Math.max(bx + 8, Math.min(bx + w - 8, x));
+  return `<g class="bubble${c.crying ? ' crying' : ''}">
+    <path d="M${f1(bx + 8)} ${f1(by)} H${f1(bx + w - 8)} Q${f1(bx + w)} ${f1(by)} ${f1(bx + w)} ${f1(by + 8)} V${f1(by + h - 8)} Q${f1(bx + w)} ${f1(by + h)} ${f1(bx + w - 8)} ${f1(by + h)}
+      H${f1(tip + 5)} L${f1(tip)} ${f1(by + h + 6)} L${f1(tip - 5)} ${f1(by + h)} H${f1(bx + 8)} Q${f1(bx)} ${f1(by + h)} ${f1(bx)} ${f1(by + h - 8)} V${f1(by + 8)} Q${f1(bx)} ${f1(by)} ${f1(bx + 8)} ${f1(by)} z"
+      fill="#fffdf7" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>
+    ${lines.map((l, i) => `<text x="${f1(bx + w / 2)}" y="${f1(by + 15 + i * 13)}" text-anchor="middle">${esc(l)}</text>`).join('')}
   </g>`;
 }
 
@@ -433,5 +480,6 @@ export function yardScene(o: SceneOptions): string {
     ${tuft(12, 300, 1.5, true)}${tuft(96, 301, 1.2)}${tuft(380, 300, 1.7, true)}${tuft(354, 301, 1.1)}${tuft(206, 302, 1)}
     ${cosy}
     ${lights(light, asleep)}
+    ${asleep ? '' : placed.filter((p) => p.c.bubble || p.c.crying).map((p) => bubble(...bubbleAnchor(p.c, p.spot), p.c)).join('')}
   </svg>`;
 }

@@ -67,6 +67,8 @@ export const pirate: Record<string, string> = {
   'Bang! You betrayed {0}. The whole yard will see your horns.': 'Bang! Ye betrayed {0}. The whole yard will see yer horns, ye scurvy dog.',
   'Bang! You shot {0}. The yard is yours for a few minutes.': 'Bang! Ye shot {0}. The yard be yers fer a few minutes. Yo ho!',
   'Banked {0} points.': '{0} doubloons stowed in yer chest. Arr!',
+  'Battle cry': 'Battle cry',
+  'Battle cry saved.': 'Battle cry stowed. Arr!',
   'Beak': 'Beak',
   'Betrayals: {0}': 'Betrayals: {0}',
   'Betrayed by an ally: {0}': 'Betrayed by a shipmate: {0}',
@@ -92,6 +94,7 @@ export const pirate: Record<string, string> = {
   'Change for this yard': 'Change fer this yard',
   'Change username': 'Take a new pirate name',
   'Chatterbox': 'Loudest parrot',
+  'Checking…': 'Checkin’ the hold…',
   'Chicken': 'Bird',
   'Chicken by chicken': 'Bird by bird',
   'Chicken saved.': 'Yer bird be shipshape.',
@@ -126,8 +129,10 @@ export const pirate: Record<string, string> = {
   'Decline': 'Nay',
   'Delete my account': 'Walk the plank',
   'Delete my account forever': 'Walk the plank, forever',
+  'Delete my battle cry': 'Scuttle me battle cry',
   'Delete your account for good? This cannot be undone.': 'Walk the plank fer good? There be no swimmin’ back.',
   'Deletion cancelled.': 'Ye stepped back from the plank.',
+  'Discard': 'Toss it',
   'Done at {0} · {1} left': 'Done at {0} · {1} to go',
   'Double': 'Double',
   'Each ally picks a secret meal length. The alliance lasts until the longer of the two runs out.':
@@ -213,6 +218,7 @@ export const pirate: Record<string, string> = {
   'Last Grain': 'The Last Crumb',
   'Leaderboard': 'Legends',
   'Leave a note for the flock': 'Scrawl a note fer the crew',
+  'Listen to it, then save it or try again.': 'Give it a listen, then stow it or try again.',
   'Long': 'Long',
   'Longest meal': 'Longest meal',
   'Longest meal possible right now: {0}.': 'Longest meal ye can take right now: {0}.',
@@ -230,6 +236,7 @@ export const pirate: Record<string, string> = {
   'Narrowest escapes': 'Narrowest escapes',
   'Near misses: {0}, and {1} feed got away': 'Near misses: {0}, an’ {1} grub slipped away',
   'New here? Create a chicken': 'New to these waters? Hatch a bird',
+  'No battle cry yet: your chicken just squawks.': 'No battle cry yet: yer bird just squawks.',
   'No chicken has a name like that.': 'No bird sails under a name like that.',
   'No open yards right now.': 'No open yards on the horizon.',
   'No such yard': 'No such yard, matey',
@@ -255,6 +262,8 @@ export const pirate: Record<string, string> = {
   'Not started · waiting for 1 invited chicken': 'Still in port · waitin’ on 1 summoned bird',
   'Not started · waiting for {0} invited chickens': 'Still in port · waitin’ on {0} summoned birds',
   'Notes posted: {0}': 'Notes scrawled: {0}',
+  'Notes you post in a yard also appear in a speech bubble above your chicken for two minutes, or until you leave.':
+    'Notes ye scrawl in a yard also show in a speech bubble above yer bird fer two minutes, or till ye leave.',
   'Nothing yet. Notes and yard news show up here.': 'The log be blank. Notes and yard tidings show up here.',
   'Notice board': 'Ship’s log',
   'of {0}': 'o’ {0}',
@@ -286,13 +295,20 @@ export const pirate: Record<string, string> = {
   'Pick how long to eat. You can come back and stop early.': 'Pick how long to eat. Ye can come back and stop early.',
   'Pick when the yard closes.': 'Pick when the yard closes, ye bilge rat.',
   'Pile left alone': 'Hoard left unguarded',
+  'Play': 'Play',
   'Playing as your personal chicken.': 'Sailin’ with yer own bird.',
   'Post': 'Scrawl',
   'Put the game on your phone': 'Stow the game on yer phone',
+  'Record': 'Record',
+  'Record again': 'Record again',
+  'Record up to {0} seconds. It plays when you are caught eating, and whenever you tap your own chicken in a yard.':
+    'Record up to {0} seconds. It plays when ye be caught at the grub, an’ whenever ye tap yer own bird in a yard.',
+  'Recording… let it out!': 'Recordin’… let it rip!',
   'Remove from flock': 'Maroon this one',
   'Round': 'Round',
   'Samsung Internet: tap the <strong>≡</strong> menu, then <strong>Add to</strong>, then <strong>Home screen</strong>.':
     'Samsung Internet: tap the <strong>≡</strong> menu, then <strong>Add to</strong>, then <strong>Home screen</strong>.',
+  'Save battle cry': 'Stow battle cry',
   'Save my chicken': 'Save me bird',
   'Save this site to your home screen and it opens like an app, full screen, with the white chicken icon.':
     'Stow this site on yer home screen and she opens like an app, full sail, under the white chicken flag.',
@@ -327,6 +343,7 @@ export const pirate: Record<string, string> = {
   'Starts when everyone has answered, then runs for {0}.': 'Sets sail when all hands have answered, then runs fer {0}.',
   'Starts {0}, then runs for {1}.': 'Sets sail {0}, then runs fer {1}.',
   'Stole from: {0}': 'Plundered from: {0}',
+  'Stop': 'Avast',
   'Stop and keep it': 'Avast, and keep the lot',
   'Stop feeding': 'Avast eatin’',
   'Sundown': 'Sundown Raid',
@@ -344,9 +361,11 @@ export const pirate: Record<string, string> = {
   'That is the game of chicken: a long meal is worth a lot, but every extra minute is another chance for someone to walk in.':
     'That be the game o’ chicken: a long meal be worth a fortune, but every extra minute be another chance fer some scallywag to walk in.',
   'That is you.': 'That be ye, ye daft bird.',
+  'That recording is too big. Try a shorter one.': 'That recordin’ be too big. Try a shorter one.',
   'That username is taken.': 'That pirate name be taken.',
   'That yard no longer exists.': 'That yard be sunk.',
   'The back garden': 'Skull Island',
+  'The caught chicken lets out its battle cry and leaves the yard.': 'The caught bird lets loose its battle cry an’ leaves the yard.',
   'The chicken who opened the yard can also start it early.': 'The cap’n who opened the yard can also weigh anchor early.',
   'The chickens are asleep': 'The birds be in their hammocks',
   'The chickens are asleep.': 'The birds be in their hammocks.',
@@ -361,6 +380,8 @@ export const pirate: Record<string, string> = {
     'The game only sets sail once every summoned bird has boarded or said nay. Ye can still weigh anchor yerself.',
   'The game starts in': 'The game sets sail in',
   'The goal must be at least 10.': 'The mark must be 10 at the least.',
+  'The microphone is blocked. Allow it for this site in your browser settings, then try again.':
+    'The microphone be blocked. Allow it fer this site in yer browser settings, then try again.',
   'The old name becomes free for someone else.': 'Yer old name be up fer grabs.',
   'The pile holds a fixed amount of feed. When it is all eaten, whoever ate the most wins. Feed from a lost meal goes back in the pile, apart from the stolen third.':
     'The hoard holds a fixed share o’ grub. When ’tis all eaten, the greediest gullet wins. Grub from a lost meal goes back in the hoard, save the plundered third.',
@@ -377,6 +398,9 @@ export const pirate: Record<string, string> = {
   'There is no standoff to settle.': 'There be no standoff to settle.',
   'There is no time left to eat.': 'There be no time left to eat.',
   'There is nothing left to eat.': 'There be not a crumb left.',
+  'There you can also record a battle cry of up to 5 seconds. It plays when you are caught eating, and when you tap your own chicken in a yard, for everyone there to hear.':
+    'There ye can also record a battle cry o’ up to 5 seconds. It plays when ye be caught at the grub, an’ when ye tap yer own bird in a yard, fer all aboard to hear.',
+  'This browser cannot record sound.': 'This browser can’t record sound.',
   'This is your personal chicken. It greets you on the home screen and is offered whenever you start or join a yard.':
     'This be yer own bird. It greets ye in port and be offered whenever ye open or board a yard.',
   'this meal': 'this meal',
@@ -488,6 +512,7 @@ export const pirate: Record<string, string> = {
     'Yer allied meal be done an’ yer bird leaves the yard. {0} doubloons stowed.',
   'Your ally cannot catch you, but any other chicken who walks in can, and catches both of you if you are both eating.':
     'Yer shipmate can’t board ye, but any other bird who walks in can, an’ catches ye both if ye both be eatin’.',
+  'Your battle cry is saved.': 'Yer battle cry be stowed.',
   'Your browser blocked the Google window. Allow pop-ups and try again.':
     'Yer browser scuttled the Google window. Allow pop-ups and try again.',
   'Your chicken': 'Yer bird',

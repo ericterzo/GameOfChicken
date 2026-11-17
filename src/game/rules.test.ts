@@ -635,3 +635,22 @@ describe('ally or fight', () => {
     expect(back.interrupted[0]).toMatchObject({ victimUid: 'a', byUid: 'b' });
   });
 });
+
+describe('a caught chicken', () => {
+  it('leaves the yard, and the catch is noted for the yard to act out', () => {
+    // Anna eats while watching; Ben walks in.
+    const y = touch(startEating(yard(), 'a', s(0), 600).yard, 'a', s(20)).yard;
+    const r = touch(y, 'b', s(30));
+    expect(r.yard.members.a.lastSeen).toBe(0);
+    expect(r.yard.caught).toEqual({ victims: ['a'], byUid: 'b', at: s(30) });
+    expect(why(r.yard, 'b', s(31))).toBeNull(); // no standoff: the yard is Ben's
+  });
+
+  it('remembers when each chicken last walked in', () => {
+    let y = touch(yard(), 'a', s(0)).yard;
+    y = touch(y, 'a', s(15)).yard;
+    expect(y.members.a.arrivedAt).toBe(s(0));
+    y = touch(leave(y, 'a'), 'a', s(40)).yard;
+    expect(y.members.a.arrivedAt).toBe(s(40));
+  });
+});

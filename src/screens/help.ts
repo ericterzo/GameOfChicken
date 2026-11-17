@@ -25,6 +25,7 @@ export function helpScreen(root: HTMLElement): void {
         <li>${t('You get <strong>a third of it</strong>, added to your score straight away.')}</li>
         <li>${t('Only the meal in progress is lost. Points from meals already finished or stopped are safe for good.')}</li>
         <li>${t('A caught chicken shrinks back to the size it had before the meal.')}</li>
+        <li>${t('The caught chicken lets out its battle cry and leaves the yard.')}</li>
         <li>${t('Nobody is told when they are caught. They find out the next time they open the game.')}</li>
       </ul>
       <p class="callout">${t('That is the game of chicken: a long meal is worth a lot, but every extra minute is another chance for someone to walk in.')}</p>
@@ -103,6 +104,8 @@ export function helpScreen(root: HTMLElement): void {
       <h2>${t('Your chicken and your record')}</h2>
       <ul>
         <li>${t('<strong>My chicken</strong> is where you design your personal chicken. It is offered for every yard you start or join.')}</li>
+        <li>${t('There you can also record a battle cry of up to 5 seconds. It plays when you are caught eating, and when you tap your own chicken in a yard, for everyone there to hear.')}</li>
+        <li>${t('Notes you post in a yard also appear in a speech bubble above your chicken for two minutes, or until you leave.')}</li>
         <li>${t('<strong>Flock</strong> shows your record next to your friends’. Add friends by username.')}</li>
         <li>${t('<strong>Leaderboard</strong> ranks every chicken in the game.')}</li>
         <li>${t('A yard only counts towards your record if at least one other chicken joined it.')}</li>

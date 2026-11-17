@@ -5,7 +5,7 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch,
+  addDoc, Bytes, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import {
   choose, createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
@@ -325,5 +325,21 @@ describe('yards', () => {
     await assertFails(addDoc(board('ben'), { ...line, uid: 'carl', victimUid: 'dora' })); // about others
     await assertFails(addDoc(board('ben'), { ...line, outcome: 'won' }));
     await assertSucceeds(addDoc(board('anna'), { kind: 'shot', at: Date.now(), by: 'anna', uid: 'anna', username: 'Anna', victimUid: 'ben', victimName: 'Ben', betrayal: true, lost: 12 }));
+  });
+
+  it('keeps each battle cry to its owner and five seconds\' worth, and lets members shout only as themselves', async () => {
+    const cry = (n: number) => ({ audio: Bytes.fromUint8Array(new Uint8Array(n)), mime: 'audio/webm', at: Date.now() });
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'cries/anna'), cry(30_000)));
+    await assertFails(setDoc(doc(dbFor('ben'), 'cries/anna'), cry(30_000)));
+    await assertFails(setDoc(doc(dbFor('anna'), 'cries/anna'), cry(400_000)));
+    await assertFails(setDoc(doc(dbFor('anna'), 'cries/anna'), { ...cry(10), extra: 1 }));
+    await assertSucceeds(getDoc(doc(dbFor('ben'), 'cries/anna')));
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'cries/anna')));
+    await assertFails(deleteDoc(doc(dbFor('ben'), 'cries/anna')));
+    await assertSucceeds(deleteDoc(doc(dbFor('anna'), 'cries/anna')));
+    await seed(join(freshYard(), 'ben', 'Ben', look, Date.now()));
+    await assertSucceeds(updateDoc(doc(dbFor('ben'), 'yards/y1'), { shout: { uid: 'ben', at: Date.now() } }));
+    await assertFails(updateDoc(doc(dbFor('ben'), 'yards/y1'), { shout: { uid: 'anna', at: Date.now() } }));
+    await assertFails(updateDoc(doc(dbFor('carl'), 'yards/y1'), { shout: { uid: 'carl', at: Date.now() } }));
   });
 });
