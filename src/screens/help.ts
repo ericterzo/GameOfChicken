@@ -29,19 +29,47 @@ export function helpScreen(root: HTMLElement): void {
       </ul>
       <p class="callout">${t('That is the game of chicken: a long meal is worth a lot, but every extra minute is another chance for someone to walk in.')}</p>
 
-      <h2>${t('The standoff')}</h2>
+      <h2>${t('Allianceship and standoffs')}</h2>
+      <h3>${t('The standoff')}</h3>
       <ul>
         <li>${t('Nobody can start eating while another chicken is in the yard.')}</li>
         <li>${t('A chicken is only in the yard while its owner has the yard open, or while it is eating. You cannot leave a chicken behind to stand guard.')}</li>
-        <li>${t('So when two of you are there together, somebody has to leave first.')}</li>
+        <li>${t('So when two of you are there together, somebody has to leave first, or you settle it below.')}</li>
       </ul>
 
-      <h2>${t('Ally or fight')}</h2>
-      <p>${t('When exactly two chickens face off and nobody is eating, each chooses in secret: ally or fight.')}</p>
+      <h3>${t('Two chickens: ally or fight')}</h3>
+      <p>${t('When exactly two chickens are in the yard and nobody is eating, both see two buttons under the yard: <strong>Ally</strong> and <strong>Fight</strong>.')}</p>
       <ul>
-        <li>${t('<strong>Both ally:</strong> each picks how long to feed, and keeps it secret. You feed side by side and cannot catch each other, but any other chicken who walks in can catch you both. When your meal is over, you leave the yard.')}</li>
-        <li>${t('<strong>One fights, one allies:</strong> the fighter keeps the yard; the other is thrown out for 7 minutes.')}</li>
-        <li>${t('<strong>Both fight:</strong> both are thrown out for 12 minutes.')}</li>
+        <li>${t('Each chooses in secret. You see when the other chicken has decided, but not what they chose.')}</li>
+        <li>${t('A choice cannot be taken back. If either chicken leaves before both have chosen, the choice is forgotten.')}</li>
+      </ul>
+      <dl class="modes-help">
+        <div><dt>${t('Both ally')}</dt><dd>${t('You become allies. Each of you picks how long to feed, and that length stays secret, even from your ally. You can feed at the same time, side by side, and neither of you can catch the other.')}</dd></div>
+        <div><dt>${t('One fights, one allies')}</dt><dd>${t('The fighter wins the yard. The chicken who offered an alliance is thrown out for 7 minutes.')}</dd></div>
+        <div><dt>${t('Both fight')}</dt><dd>${t('Both chickens are thrown out for 12 minutes.')}</dd></div>
+      </dl>
+
+      <h3>${t('Feeding as allies')}</h3>
+      <ul>
+        <li>${t('Each ally gets one allied meal. Start it whenever you like while the alliance stands.')}</li>
+        <li>${t('Your ally cannot catch you, but any other chicken who walks in can, and catches both of you if you are both eating.')}</li>
+        <li>${t('When your meal is over, or you stop it early, you keep the feed and your chicken leaves the yard.')}</li>
+        <li>${t('In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.')}</li>
+        <li>${t('The alliance ends once both allies have had their meal, or walked away without one.')}</li>
+      </ul>
+
+      <h3>${t('Three or more chickens: the trigger')}</h3>
+      <ul>
+        <li>${t('When three or more chickens are in the yard, each sees a button that reads <strong>Shoot??????????</strong>.')}</li>
+        <li>${t('Every press takes away one question mark. Nobody else can see how many you have left.')}</li>
+        <li>${t('After ten presses it turns into <strong>Shoot!</strong>. Press it and you shoot one of the other chickens, picked at random.')}</li>
+        <li>${t('A chicken that is shot is thrown out of the yard for 2 to 4 minutes. Your trigger then starts again from ten.')}</li>
+      </ul>
+
+      <h3>${t('Thrown out')}</h3>
+      <ul>
+        <li>${t('A chicken thrown out of a yard cannot go back in until its time is up. The yard’s row on your home screen says who did it and counts down the wait.')}</li>
+        <li>${t('If the shot hits your own ally, that is a betrayal: they lose the meal they were eating, the yard’s notice board says so, and the traitor wears red horns for the rest of that game.')}</li>
       </ul>
 
       <h2>${t('Three games')}</h2>

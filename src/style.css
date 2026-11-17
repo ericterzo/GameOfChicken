@@ -325,3 +325,4 @@ input:not([type='checkbox']):not([type='radio']), select {
 .btn.trigger.cocked { background: var(--bad); border-color: #9d2b21; animation: cocked 0.6s ease-in-out infinite alternate; }
 @keyframes cocked { to { transform: scale(1.03); } }
 @media (prefers-reduced-motion: reduce) { .btn.trigger.cocked { animation: none; } }
+.help h3 { color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 1rem; margin-top: 16px; }
