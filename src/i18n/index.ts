@@ -1,6 +1,7 @@
 // Languages. English text is the key: t('Save my chicken') returns the same
 // sentence in the chosen language, or the English itself if none is written.
 // Numbered gaps take the extra arguments: t('Closes in {0}', '2h').
+import { track } from '../analytics';
 import { it } from './it';
 import { pirate } from './pirate';
 
@@ -38,6 +39,7 @@ export function setLang(next: Lang): void {
   } catch {
     /* lasts until the page closes */
   }
+  track('language_changed', { lang: next });
   listeners.forEach((cb) => cb(next));
 }
 

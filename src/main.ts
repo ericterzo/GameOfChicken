@@ -9,6 +9,7 @@ import { chickenScreen, flockScreen, leaderboardScreen } from './screens/profile
 import { joinScreen, newYardScreen } from './screens/setup';
 import { yardScreen } from './screens/yard';
 import { getLang, LANG_GIFT, langMenu, onLang, t, wireLangMenu } from './i18n';
+import { identify, pageview, startAnalytics } from './analytics';
 import { unlockAudio } from './ui/cries';
 import { music } from './ui/music';
 import { esc, toast } from './ui/dom';
@@ -58,10 +59,11 @@ function route(): void {
   }
   const [name = '', ...params] = location.hash.replace(/^#\/?/, '').split('/');
   // The rules can be read before signing in.
-  if (!uid && name === 'help') { helpScreen(bare()); return; }
-  if (!uid) { authScreen(bare()); return; }
+  if (!uid && name === 'help') { pageview('help'); helpScreen(bare()); return; }
+  if (!uid) { pageview('sign-in'); authScreen(bare()); return; }
 
   const screen = ROUTES[name] ?? homeScreen;
+  pageview(ROUTES[name] ? name || 'home' : 'home');
   const tab = (key: string, label: string) =>
     `<a href="#/${key}" class="${name === key ? 'on' : ''}">${label}</a>`;
   root.innerHTML = `
@@ -77,7 +79,10 @@ function route(): void {
   cleanup = screen(root.querySelector('main')!, app, params);
 }
 
+startAnalytics();
+
 onUser((next) => {
+  identify(next);
   stopProfile?.();
   stopProfile = null;
   profile = null;

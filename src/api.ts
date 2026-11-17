@@ -10,6 +10,7 @@ import {
   runTransaction, updateDoc, where, writeBatch, type Transaction,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { track } from './analytics';
 import { t } from './i18n';
 import * as rules from './game/rules';
 import type { Look, NewYard, Result, Tally, Yard } from './game/rules';
@@ -105,6 +106,7 @@ export async function signUp(username: string, password: string): Promise<void> 
     const login = newLoginId();
     const cred = await createUserWithEmailAndPassword(auth, emailFor(login), password);
     await writeProfile(cred.user.uid, username, login);
+    track('signed_up', { method: 'password' });
   } catch (e) {
     throw friendly(e);
   } finally {
@@ -129,6 +131,7 @@ async function writeProfile(uid: string, username: string, login?: string): Prom
 export async function signInWithGoogle(): Promise<void> {
   try {
     await signInWithPopup(auth, new GoogleAuthProvider());
+    track('signed_in', { method: 'google' });
   } catch (e) {
     const code = (e as { code?: string })?.code ?? '';
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
@@ -149,6 +152,7 @@ export async function claimUsername(uid: string, username: string): Promise<void
       throw new ApiError(t('That username is taken.'));
     }
     await writeProfile(uid, username);
+    track('signed_up', { method: 'google' });
   } catch (e) {
     if ((e as { code?: string })?.code === 'permission-denied') throw new ApiError(t('That username is taken.'));
     throw friendly(e);
@@ -162,6 +166,7 @@ export async function signIn(username: string, password: string): Promise<void> 
     const entry = await getDoc(doc(db, 'usernames', key));
     if (!entry.exists()) throw new ApiError(t('Wrong username or password.'));
     await signInWithEmailAndPassword(auth, emailFor((entry.data().login as string | undefined) ?? key), password);
+    track('signed_in', { method: 'password' });
   } catch (e) {
     throw friendly(e);
   }
@@ -283,6 +288,7 @@ export async function renameUser(me: Profile, wanted: string): Promise<void> {
     throw friendly(e);
   }
   await renameInYards(me.uid, username);
+  track('username_changed');
 }
 
 /**
@@ -319,6 +325,7 @@ export async function deleteAccount(me: Profile, password: string): Promise<void
     batch.delete(doc(db, 'cries', me.uid));
     batch.delete(doc(db, 'usernames', me.username.toLowerCase()));
     await batch.commit();
+    track('account_deleted');
     await deleteUser(user);
   } catch (e) {
     throw friendly(e);
@@ -333,6 +340,7 @@ export async function addFriendByUid(me: Profile, uid: string): Promise<void> {
   if (uid === me.uid) throw new ApiError(t('That is you.'));
   if (me.friends.includes(uid)) throw new ApiError(t('Already in your flock.'));
   await updateDoc(doc(db, 'users', me.uid), { friends: arrayUnion(uid) });
+  track('friend_added');
 }
 
 export async function removeFriend(myUid: string, friendUid: string): Promise<void> {
@@ -385,6 +393,11 @@ export async function createYard(me: Profile, opts: NewYard, look: Look): Promis
   try {
     const yard = rules.createYard(opts, me.uid, me.username, look, newCode(), Date.now());
     const ref = await addDoc(collection(db, 'yards'), yard);
+    track('yard_created', {
+      mode: opts.mode, goal: opts.goal, hardcore: opts.hardcore, sleep_hours: !!opts.sleep,
+      start_later: opts.startsAt != null, invites: opts.invites?.length ?? 0,
+      hours: Math.round((opts.endsAt - Date.now()) / 3600_000),
+    });
     return ref.id;
   } catch (e) {
     throw friendly(e);
@@ -410,6 +423,7 @@ export async function joinYard(me: Profile, yardId: string, look: Look): Promise
       tx.set(yardRef(yardId), after);
       logMeals(tx, yardId, me.uid, before, after, now);
     });
+    track('yard_joined');
   } catch (e) {
     throw friendly(e);
   }
@@ -452,6 +466,7 @@ export async function saveCry(uid: string, recording: Blob): Promise<void> {
   if (audio.byteLength > MAX_CRY_BYTES) throw new ApiError(t('That recording is too big. Try a shorter one.'));
   try {
     await setDoc(doc(db, 'cries', uid), { audio: Bytes.fromUint8Array(audio), mime: (recording.type || 'audio/webm').slice(0, 59), at: Date.now() });
+    track('battle_cry_saved', { bytes: audio.byteLength });
   } catch (e) {
     throw friendly(e);
   }
@@ -477,6 +492,7 @@ export async function getCry(uid: string): Promise<Blob | null> {
 export async function shout(yardId: string, uid: string): Promise<void> {
   try {
     await updateDoc(doc(db, 'yards', yardId), { shout: { uid, at: Date.now() } });
+    track('battle_cry_tapped');
   } catch {
     /* only the others miss it */
   }
@@ -561,6 +577,9 @@ export async function drawGun(yardId: string, me: Profile, minOthers = 1): Promi
       ...(shot.betrayal ? { betrayal: true, lost: shot.lost } : {}),
     });
     return { victim: victimName, betrayal: shot.betrayal };
+  }).then((shot) => {
+    if (shot) track('shot', { via: minOthers > 1 ? 'trigger' : 'gun', betrayal: shot.betrayal });
+    return shot;
   });
 }
 
@@ -584,6 +603,9 @@ export async function chooseSide(yardId: string, me: Profile, choice: rules.Choi
         });
       }
       return outcome;
+    }).then((outcome) => {
+      track('standoff_choice', { choice, outcome: outcome?.kind ?? null });
+      return outcome;
     });
   } catch (e) {
     throw friendly(e);
@@ -600,6 +622,7 @@ export async function postNote(yardId: string, me: Profile, text: string): Promi
       if (victim) return victim;
     }
     await addDoc(boardCol(yardId), { kind: 'chat', at: Date.now(), by: me.uid, uid: me.uid, username: me.username, text: clean });
+    track('note_posted', { length: clean.length });
     return null;
   } catch (e) {
     throw friendly(e);
@@ -674,6 +697,9 @@ async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Re
         });
       }
       return result;
+    }).then((result) => {
+      if (result.interrupted.length) track('caught_someone', { meals: result.interrupted.length });
+      return result;
     });
   } catch (e) {
     throw friendly(e);
@@ -683,8 +709,12 @@ async function act(yardId: string, uid: string, fn: (y: Yard, now: number) => Re
 /** I am in the yard: interrupts anyone else eating, keeps my presence fresh. */
 export const touchYard = (id: string, uid: string) => act(id, uid, (y, now) => rules.touch(y, uid, now));
 
-export const startEating = (id: string, uid: string, seconds: number) =>
-  act(id, uid, (y, now) => rules.startEating(y, uid, now, seconds));
+export async function startEating(id: string, uid: string, seconds: number): Promise<Result> {
+  const r = await act(id, uid, (y, now) => rules.startEating(y, uid, now, seconds));
+  const y = r.yard;
+  track('meal_started', { seconds: y.hardcore ? null : seconds, hardcore: y.hardcore, allied: !!y.pact?.meals[uid], mode: y.mode });
+  return r;
+}
 
 export const stopEating = (id: string, uid: string) => act(id, uid, (y, now) => rules.stopEating(y, uid, now));
 

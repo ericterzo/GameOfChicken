@@ -14,6 +14,7 @@ import { chickenSvg } from '../ui/chicken';
 import { reportHtml } from '../ui/gameReport';
 import { playCry } from '../ui/cries';
 import { music } from '../ui/music';
+import { track } from '../analytics';
 import { busy, clock, dateTime, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { sceneClock, yardScene, type SceneChicken } from '../ui/yardScene';
@@ -154,6 +155,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     head.innerHTML = html;
     head.querySelector<HTMLButtonElement>('#music-toggle')!.onclick = () => {
       music.setOn(!music.on);
+      track('music_toggled', { on: music.on });
       head.dataset.html = '';
       paint();
     };
