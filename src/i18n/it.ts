@@ -3,6 +3,8 @@ export const it: Record<string, string> = {
   '(you)': '(tu)',
   '1 day': '1 giorno',
   '1 hour': '1 ora',
+  '<strong>Cooperative brutal:</strong> the fox also kills one of the chickens it finds eating, at random. It keeps its score and can watch, but can never eat again.':
+    '<strong>Cooperativo spietato:</strong> la volpe uccide anche uno dei polli che trova a mangiare, a caso. Il pollo tiene il suo punteggio e può guardare, ma non potrà mai più mangiare.',
   '<strong>Flock</strong> shows your record next to your friends’. Add friends by username.':
     '<strong>Stormo</strong> mostra il tuo palmarès accanto a quello degli amici. Aggiungi amici con il loro nome utente.',
   '<strong>Leaderboard</strong> ranks every chicken in the game.': '<strong>Classifica</strong> mette in fila tutti i polli del gioco.',
@@ -25,6 +27,8 @@ export const it: Record<string, string> = {
     'Una scelta non si può ritirare. Se uno dei due polli se ne va prima che entrambi abbiano scelto, la scelta viene dimenticata.',
   'A fixed pile of feed. When it is gone, whoever ate the most wins.':
     'Un mucchio fisso di mangime. Quando finisce, vince chi ha mangiato di più.',
+  'A fox drops by at random, every 1 to 5 hours. Every chicken in the yard then, eating or watching, loses the meal in progress and is out of the yard for 20 minutes.':
+    'Una volpe passa a caso, ogni 1–5 ore. Ogni pollo che in quel momento è nell’aia, che mangi o guardi, perde il pasto in corso e resta fuori dall’aia per 20 minuti.',
   'A friend': 'Un amico',
   'A meal lasts at least 5 seconds.': 'Un pasto dura almeno 5 secondi.',
   'A near miss is walking in within five minutes after another chicken finished a meal; for them it was a close shave. Visits a few minutes apart count as one.':
@@ -54,6 +58,8 @@ export const it: Record<string, string> = {
   'Android': 'Android',
   'Another chicken is eating.': 'Un altro pollo sta mangiando.',
   'Another chicken is watching. Wait them out.': 'Un altro pollo sta guardando. Aspetta che se ne vada.',
+  'Any of the three games can be played with Classic rules (everything above) or Cooperative rules. You choose when you open the yard.':
+    'Ognuno dei tre giochi si può fare con le regole Classiche (tutto quello sopra) o Cooperative. Scegli quando apri l’aia.',
   'Anyone can start a yard and choose the game, how long it stays open (up to two weeks) and the extra rules.':
     'Chiunque può aprire un’aia e scegliere il gioco, quanto resta aperta (fino a due settimane) e le regole extra.',
   'As soon as only two chickens are left in the yard, any shot not yet fired is ignored, every trigger goes back to ten, and the two chickens get Ally and Fight instead.':
@@ -91,6 +97,7 @@ export const it: Record<string, string> = {
   'Cancel': 'Annulla',
   'Cannot reach the server. Check your connection.': 'Impossibile raggiungere il server. Controlla la connessione.',
   'Catches': 'Catture',
+  'Caught by the fox: {0}': 'Beccato dalla volpe: {0}',
   'Caught by: {0}': 'Beccato da: {0}',
   'Caught! Another chicken walked in and your meal is gone.': 'Beccato! È entrato un altro pollo e il tuo pasto è perso.',
   'Change for this yard': 'Cambia per questa aia',
@@ -100,8 +107,12 @@ export const it: Record<string, string> = {
   'Chicken': 'Pollo',
   'Chicken by chicken': 'Pollo per pollo',
   'Chicken saved.': 'Pollo salvato.',
+  'Chickens can eat side by side, and walking in does not catch anyone. There are no standoffs.':
+    'I polli possono mangiare fianco a fianco, ed entrare non becca nessuno. Non ci sono stalli.',
   'Chickens grow as they score. If the top score is shared, the win is shared.':
     'I polli crescono man mano che fanno punti. Se il punteggio più alto è condiviso, la vittoria è condivisa.',
+  'Chickens that are dead, or out of the yard, do not count towards the whole flock.':
+    'I polli morti, o fuori dall’aia, non contano per lo stormo intero.',
   'Choose in secret.': 'Scegli in segreto.',
   'Classic': 'Classico',
   'Close': 'Chiudi',
@@ -118,6 +129,11 @@ export const it: Record<string, string> = {
   'Come back and stop early whenever you like: you keep what you have eaten so far.':
     'Torna e fermati prima quando vuoi: tieni quello che hai mangiato fin lì.',
   'Continue with Google': 'Continua con Google',
+  'Cooperative': 'Cooperativo',
+  'Cooperative brutal': 'Cooperativo spietato',
+  'Cooperative rules': 'Regole cooperative',
+  'Cooperative, but the fox also kills one of the chickens it finds eating.':
+    'Cooperativo, ma la volpe uccide anche uno dei polli che trova a mangiare.',
   'Could not load the leaderboard. Check your connection.': 'Impossibile caricare la classifica. Controlla la connessione.',
   'Counting chickens…': 'Conto i polli…',
   'Counting every chicken…': 'Conto tutti i polli…',
@@ -141,13 +157,15 @@ export const it: Record<string, string> = {
     'Ogni alleato sceglie una durata segreta per il suo pasto. L’alleanza dura finché non scade la più lunga delle due.',
   'Each chooses in secret. You see when the other chicken has decided, but not what they chose.':
     'Ognuno sceglie in segreto. Vedi quando l’altro pollo ha deciso, ma non cosa ha scelto.',
+  'Eat side by side, but never let the whole flock be in the yard at once. A fox drops by every few hours.':
+    'Mangiate fianco a fianco, ma mai con tutto lo stormo nell’aia insieme. Ogni tanto passa una volpe.',
   'Eat until the end date. Most points when time runs out wins.':
     'Mangia fino alla data di chiusura. Vince chi ha più punti allo scadere del tempo.',
   'Eat until the yard closes. Most points at the end wins. The pile shrinks as time runs out.':
     'Mangia finché l’aia non chiude. Vince chi ha più punti alla fine. Il mucchio cala con il passare del tempo.',
   'Eat while nobody is looking. Get caught and you lose the meal.': 'Mangia mentre nessuno guarda. Se ti beccano, perdi il pasto.',
-  'Eating': 'Mangiare',
   'eating': 'mangia',
+  'Eating': 'Mangiare',
   'Eating until you stop.': 'Mangi finché non ti fermi.',
   'Enter': 'Entra',
   'Every chicken in the game, yards still running included. Tap a column to rank by it, or a chicken to add it to your flock. Shows the top {0}.':
@@ -172,6 +190,7 @@ export const it: Record<string, string> = {
   'Flock': 'Stormo',
   'Flock table': 'Tabella dello stormo',
   'Floppy': 'Floscia',
+  'Fox raids': 'Incursioni della volpe',
   'Game': 'Gioco',
   'Game length': 'Durata della partita',
   'Game report': 'Resoconto della partita',
@@ -196,6 +215,8 @@ export const it: Record<string, string> = {
   'Hours': 'Ore',
   'How does the game work?': 'Come funziona il gioco?',
   'How to play': 'Regole',
+  'If all {0} are here at once, everyone eating is caught. The fox comes every 1 to 5 hours.':
+    'Se tutti e {0} sono qui insieme, chi sta mangiando viene beccato. La volpe passa ogni 1–5 ore.',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'Se entra un qualsiasi altro pollo, l’alleanza si rompe: l’alleato che sta mangiando viene beccato, e si torna allo stallo.',
   'If you leave and come back while the alliance lasts, you can eat again too, still safe from your ally and still unable to catch them.':
@@ -212,10 +233,12 @@ export const it: Record<string, string> = {
   'Invite your flock': 'Invita il tuo stormo',
   'Invited, no answer yet: {0}': 'Invitati, ancora senza risposta: {0}',
   'iPhone and iPad': 'iPhone e iPad',
+  'It killed {0}.': 'Ha ucciso {0}.',
   'Join': 'Entra',
   'Join my chicken yard “{0}”. Code: {1}': 'Entra nella mia aia “{0}”. Codice: {1}',
   'Join this yard': 'Entra in questa aia',
   'Join {0}': 'Entra in {0}',
+  'Killed by the fox': 'Ucciso dalla volpe',
   'Language': 'Lingua',
   'Last Grain': 'Ultimo Chicco',
   'Leaderboard': 'Classifica',
@@ -229,8 +252,8 @@ export const it: Record<string, string> = {
   'Looking for your yards…': 'Cerco le tue aie…',
   'lurking': 'in agguato',
   'Meals kept': 'Pasti tenuti',
-  'minutes': 'minuti',
   'Minutes': 'Minuti',
+  'minutes': 'minuti',
   'Most active around {0}': 'Più attivo intorno alle {0}',
   'Most robbed': 'Il più derubato',
   'Most time at the pile': 'Più tempo al mucchio',
@@ -273,6 +296,7 @@ export const it: Record<string, string> = {
   'of {0}': 'di {0}',
   'Once the alliance is over you are rivals again, and can catch each other as usual.':
     'Quando l’alleanza finisce tornate rivali, e potete beccarvi come al solito.',
+  'One chicken eats at a time. Anyone who walks in catches it.': 'Mangia un pollo alla volta. Chiunque entri lo becca.',
   'One fights, one allies': 'Uno combatte, l’altro si allea',
   'One fights: the fighter keeps the yard and the other is thrown out for 7 minutes.':
     'Uno combatte: chi combatte si tiene l’aia e l’altro viene cacciato per 7 minuti.',
@@ -310,6 +334,7 @@ export const it: Record<string, string> = {
   'Recording… let it out!': 'Sto registrando… sfogati!',
   'Remove from flock': 'Rimuovi dallo stormo',
   'Round': 'Tondo',
+  'Rules': 'Regole',
   'Samsung Internet: tap the <strong>≡</strong> menu, then <strong>Add to</strong>, then <strong>Home screen</strong>.':
     'Samsung Internet: tocca il menu <strong>≡</strong>, poi <strong>Aggiungi a</strong>, poi <strong>Schermata Home</strong>.',
   'Save battle cry': 'Salva il grido di battaglia',
@@ -327,6 +352,7 @@ export const it: Record<string, string> = {
   'Signed in as {0}': 'Accesso come {0}',
   'Skip the chicken picker when starting or joining a yard.': 'Salta la scelta del pollo quando apri un’aia o ci entri.',
   'Sleep hours': 'Ore di sonno',
+  'So nobody can start eating while the whole flock is there.': 'Quindi nessuno può iniziare a mangiare mentre c’è tutto lo stormo.',
   'So when two of you are there together, somebody has to leave first, or you settle it below.':
     'Quindi, quando siete in due, qualcuno deve andarsene per primo, oppure lo risolvete come spiegato qui sotto.',
   'Spiky': 'A punte',
@@ -379,6 +405,18 @@ export const it: Record<string, string> = {
     'Chi combatte si prende l’aia. Il pollo che ha offerto l’alleanza viene cacciato per 7 minuti.',
   'The first chicken to reach the target size wins at once. The pile shrinks as the biggest chicken closes in.':
     'Il primo pollo che raggiunge la taglia stabilita vince subito. Il mucchio cala man mano che il pollo più grosso si avvicina.',
+  'The fox burst in and caught {0}.': 'La volpe è piombata dentro e ha beccato {0}.',
+  'The fox caught you.': 'Ti ha beccato la volpe.',
+  'The fox caught you. You can go back in {0}.': 'Ti ha beccato la volpe. Puoi rientrare tra {0}.',
+  'The fox killed your chicken! It keeps its score, but can never eat again.':
+    'La volpe ha ucciso il tuo pollo! Tiene il suo punteggio, ma non potrà mai più mangiare.',
+  'The fox killed your chicken. It can never eat again.': 'La volpe ha ucciso il tuo pollo. Non potrà mai più mangiare.',
+  'The fox killed your chicken. You can watch, but never eat again.':
+    'La volpe ha ucciso il tuo pollo. Puoi guardare, ma non mangiare mai più.',
+  'The fox killed your chicken. You keep your score and can watch, but you can never eat again.':
+    'La volpe ha ucciso il tuo pollo. Tieni il tuo punteggio e puoi guardare, ma non potrai mai più mangiare.',
+  'The fox!': 'La volpe!',
+  'The fox! It caught you, and you are out of the yard for {0}.': 'La volpe! Ti ha beccato, e sei fuori dall’aia per {0}.',
   'The game begins after a wait you choose. Chickens who join early wait in the yard and see the countdown.':
     'Il gioco comincia dopo un’attesa che scegli tu. I polli che entrano prima aspettano nell’aia e vedono il conto alla rovescia.',
   'The game is already under way: you start with {0} points, the average of the chickens already in it.':
@@ -392,6 +430,8 @@ export const it: Record<string, string> = {
   'The microphone is blocked. Allow it for this site in your browser settings, then try again.':
     'Il microfono è bloccato. Consentilo per questo sito nelle impostazioni del browser, poi riprova.',
   'The old name becomes free for someone else.': 'Il vecchio nome torna libero per qualcun altro.',
+  'The one thing the flock must never do is be in the yard all at once, watching or eating. The chicken whose arrival completes the flock catches everyone eating, and takes 1/N of all it ruined, N being how many it caught.':
+    'L’unica cosa che lo stormo non deve mai fare è stare tutto nell’aia insieme, che guardi o mangi. Il pollo il cui arrivo completa lo stormo becca tutti quelli che mangiano, e si prende 1/N di tutto ciò che ha rovinato, dove N è il numero di polli beccati.',
   'The pile holds a fixed amount of feed. When it is all eaten, whoever ate the most wins. Feed from a lost meal goes back in the pile, apart from the stolen third.':
     'Il mucchio contiene una quantità fissa di mangime. Quando è finito, vince chi ha mangiato di più. Il mangime di un pasto perso torna nel mucchio, tranne il terzo rubato.',
   'The server refused that move.': 'Il server ha rifiutato quella mossa.',
@@ -400,6 +440,8 @@ export const it: Record<string, string> = {
   'The standoff': 'Lo stallo',
   'The start can be at most a fortnight away.': 'L’inizio può essere al massimo tra due settimane.',
   'The start must be at least a minute away.': 'L’inizio deve essere almeno tra un minuto.',
+  'The whole flock is in the yard: anyone eating now would be caught.':
+    'Tutto lo stormo è nell’aia: chi mangiasse adesso verrebbe beccato.',
   'The yard is yours': 'L’aia è tua',
   'The yard must stay open for at least a minute.': 'L’aia deve restare aperta almeno un minuto.',
   'Then always open the game from that icon. On iPhone the icon keeps its own sign-in, so sign in once more there.':
@@ -407,6 +449,7 @@ export const it: Record<string, string> = {
   'There is no standoff to settle.': 'Non c’è nessuno stallo da risolvere.',
   'There is no time left to eat.': 'Non c’è più tempo per mangiare.',
   'There is nothing left to eat.': 'Non è rimasto niente da mangiare.',
+  'There is still one winner: the biggest chicken.': 'C’è comunque un solo vincitore: il pollo più grosso.',
   'There you can also record a battle cry of up to 5 seconds. It plays when you are caught eating, and when you tap your own chicken in a yard, for everyone there to hear.':
     'Lì puoi anche registrare un grido di battaglia fino a 5 secondi. Suona quando ti beccano a mangiare, e quando tocchi il tuo pollo in un’aia, e lo sentono tutti quelli presenti.',
   'This browser cannot record sound.': 'Questo browser non può registrare suoni.',
@@ -471,8 +514,8 @@ export const it: Record<string, string> = {
   'Yard stays open for': 'L’aia resta aperta per',
   'Yards': 'Aie',
   'Yards you are already in keep the chicken you chose for them.': 'Le aie in cui sei già tengono il pollo che avevi scelto.',
-  'You': 'Tu',
   'you': 'tu',
+  'You': 'Tu',
   'You and your friends side by side. Tap a column to sort by it; tap again to reverse.':
     'Tu e i tuoi amici fianco a fianco. Tocca una colonna per ordinare; tocca ancora per invertire.',
   'You and {0} are allies! Choose how long to feed; it stays secret.': 'Tu e {0} siete alleati! Scegli per quanto mangiare; resta segreto.',
@@ -565,4 +608,7 @@ export const it: Record<string, string> = {
   '{0} wins the yard': '{0} vince l’aia',
   '{0} won of {1}': '{0} vinte su {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} di mangime)',
+  '{0}: {1} of {2} in the yard.': '{0}: {1} su {2} nell’aia.',
+  'You can close the app; your chicken keeps eating. You lose this meal if the whole flock is in the yard at once, or if the fox comes.':
+    'Puoi chiudere l’app; il tuo pollo continua a mangiare. Perdi questo pasto se tutto lo stormo è nell’aia insieme, o se arriva la volpe.',
 };

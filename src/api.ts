@@ -436,7 +436,7 @@ export async function createYard(me: Profile, opts: NewYard, look: Look): Promis
     track('yard_created', {
       mode: opts.mode, goal: opts.goal, hardcore: opts.hardcore, sleep_hours: !!opts.sleep,
       start_later: opts.startsAt != null, invites: opts.invites?.length ?? 0,
-      hours: Math.round((opts.endsAt - Date.now()) / 3600_000),
+      hours: Math.round((opts.endsAt - Date.now()) / 3600_000), ruleset: opts.ruleset ?? 'classic',
     });
     return ref.id;
   } catch (e) {
@@ -542,7 +542,7 @@ export async function shout(yardId: string, uid: string): Promise<void> {
 
 export interface BoardEntry {
   id: string;
-  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot' | 'duel';
+  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot' | 'duel' | 'fox';
   at: number;
   /** Who the line is about: the writer, the visitor, the eater or the catcher. */
   uid: string;
@@ -557,12 +557,26 @@ export interface BoardEntry {
   betrayal?: boolean;
   /** How a standoff ended: uid and victimUid allied, uid fought victimUid off, or both brawled. */
   outcome?: 'allied' | 'fought' | 'brawl';
+  /** The fox: who it caught (names), whom it killed (brutal rules), and the feed lost. */
+  victims?: string[];
+  killed?: string | null;
+  victimUids?: string[];
+  killedUid?: string | null;
 }
 
 const boardCol = (yardId: string) => collection(db, 'yards', yardId, 'board');
 
 /** Inside a yard transaction: note any meal that was banked or stolen by it. */
 function logMeals(tx: Transaction, yardId: string, by: string, before: Yard, after: Yard, now: number, caught: rules.InterruptEvent[] = []): void {
+  // The fox came by while this was being worked out: note what it did.
+  const fox = after.fox;
+  if (fox && fox.at !== before.fox?.at && after.members[by]) {
+    tx.set(doc(boardCol(yardId)), {
+      kind: 'fox', at: fox.at, by, uid: by, username: after.members[by].username,
+      victims: fox.victims.map((u) => after.members[u]?.username ?? '?'), killed: fox.killed ? after.members[fox.killed]?.username ?? '?' : null,
+      lost: fox.lost, victimUids: fox.victims, killedUid: fox.killed,
+    });
+  }
   for (const ev of rules.mealEvents(before, after, now, caught)) {
     const username = after.members[ev.uid].username;
     tx.set(doc(boardCol(yardId)), ev.kind === 'ate'

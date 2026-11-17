@@ -3,7 +3,7 @@ import {
   claimStats, declineInvite, finalizeYard, hasUnclaimed, ONLINE_MS, watchProfiles, whoIsEating, type Profile, joinYard, markRead, watchInbox, watchMyInvites, watchMyYards,
   type InboxMessage, type YardDoc,
 } from '../api';
-import { countsForRecords, isOut, MODE_NAMES, settle, type Member } from '../game/rules';
+import { countsForRecords, isOut, MODE_NAMES, RULESET_NAMES, settle, type Member } from '../game/rules';
 import { busy, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { installHelp } from '../ui/installHelp';
@@ -14,6 +14,8 @@ import { sceneClock, yardScene } from '../ui/yardScene';
 
 /** Why I am out of a yard, and for how long. */
 export function outLine(m: Member, by: string, left: string): string {
+  if (m.dead) return t('The fox killed your chicken. You can watch, but never eat again.');
+  if (m.outWhy === 'fox') return t('The fox caught you. You can go back in {0}.', left);
   if (m.outWhy === 'beaten') return t('{0} fought you off. You can go back in {1}.', by, left);
   if (m.outWhy === 'brawl') return t('You and {0} fought and were both thrown out. You can go back in {1}.', by, left);
   return t('You have been shot by {0}. You can go back in {1}.', by, left);
@@ -67,7 +69,7 @@ export const homeScreen: Screen = (root, app) => {
       <h2>${t('You are invited')}</h2>
       ${invites.map((y) => `<div class="invite">
         <p>${t('<strong>{0}</strong> invited you to <strong>{1}</strong>', esc(y.members[y.ownerUid]?.username ?? t('A friend')), esc(y.name))}
-          <span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}<br>
+          <span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.ruleset && y.ruleset !== 'classic' ? `<span class="tag-pill coop">${t(RULESET_NAMES[y.ruleset])}</span>` : ''}${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}<br>
           <span class="muted small">${y.status === 'waiting'
             ? y.startsAt != null ? t('Starts in {0}, then runs for {1}.', span(y.startsAt - Date.now()), span(y.endsAt - y.createdAt))
               : t('Starts when everyone has answered, then runs for {0}.', span(y.endsAt - y.createdAt))
@@ -185,7 +187,7 @@ export const homeScreen: Screen = (root, app) => {
     }
     const row = ({ id, y }: (typeof view)[number]) => {
       const mine = y.members[uid]?.points ?? 0;
-      const tags = `<span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}`;
+      const tags = `<span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.ruleset && y.ruleset !== 'classic' ? `<span class="tag-pill coop">${t(RULESET_NAMES[y.ruleset])}</span>` : ''}${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}`;
       let line: string;
       const shot = y.status === 'active' && isOut(y, uid, now);
       if (shot) {

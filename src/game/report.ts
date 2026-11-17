@@ -4,7 +4,7 @@ import { leaderPoints, totalPoints, type Yard } from './rules';
 
 /** One line of the yard's log (see BoardEntry in api.ts). */
 export interface LogEntry {
-  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot' | 'duel';
+  kind: 'chat' | 'visit' | 'ate' | 'caught' | 'shot' | 'duel' | 'fox';
   at: number;
   uid: string;
   amount?: number;
@@ -13,6 +13,8 @@ export interface LogEntry {
   taken?: number;
   betrayal?: boolean;
   outcome?: 'allied' | 'fought' | 'brawl';
+  victimUids?: string[];
+  killedUid?: string | null;
 }
 
 export interface Dealings { times: number; feed: number }
@@ -44,6 +46,9 @@ export interface PlayerReport {
   /** Shots at one's own ally, and being shot by one's ally. */
   betrayals: number;
   betrayed: number;
+  /** Caught by the fox, and killed by it (brutal rules). */
+  foxed: number;
+  killed: boolean;
   /** Walked in just after another chicken finished a meal: how often, and how much feed got away. */
   nearMisses: number;
   nearMissFeed: number;
@@ -66,6 +71,8 @@ export interface YardReport {
   totalEaten: number;
   totalStolen: number;
   catches: number;
+  /** How often the fox came and caught someone. */
+  foxVisits: number;
   hours: number[];
   busiestHour: number | null;
   awards: Award[];
@@ -87,11 +94,18 @@ export function yardReport(yard: Yard, log: LogEntry[], hourOf: (t: number) => n
     players[uid] = {
       uid, visits: 0, notes: 0, meals: 0, feedingMs: 0, longestMeal: 0, steals: 0, feedStolen: 0, biggestHeist: 0, stolenFrom: {},
       timesCaught: 0, feedLost: 0, caughtBy: {}, shotsFired: 0, timesShot: 0, nearMisses: 0, nearMissFeed: 0, closeShaves: 0,
-      alliances: 0, fightsWon: 0, foughtOff: 0, brawls: 0, betrayals: 0, betrayed: 0,
+      alliances: 0, fightsWon: 0, foughtOff: 0, brawls: 0, betrayals: 0, betrayed: 0, foxed: 0, killed: false,
       hours: new Array<number>(24).fill(0), busiestHour: null,
     };
   }
   const entries = log.filter((e) => players[e.uid]).sort((a, b) => a.at - b.at);
+  let foxVisits = 0;
+  for (const e of log) {
+    if (e.kind !== 'fox') continue;
+    foxVisits += 1;
+    for (const u of e.victimUids ?? []) if (players[u]) players[u].foxed += 1;
+    if (e.killedUid && players[e.killedUid]) players[e.killedUid].killed = true;
+  }
   const hours = new Array<number>(24).fill(0);
   const active = (uid: string, t: number) => { players[uid].hours[hourOf(t)] += 1; hours[hourOf(t)] += 1; };
   const deal = (book: Record<string, Dealings>, who: string, feed: number) => {
@@ -201,6 +215,7 @@ export function yardReport(yard: Yard, log: LogEntry[], hourOf: (t: number) => n
     players, lengthMs, idleMs: Math.max(0, lengthMs - busyMs), longestIdleMs,
     totalEaten: totalPoints(yard),
     totalStolen: all.reduce((n, p) => n + p.feedStolen, 0),
+    foxVisits,
     catches: all.reduce((n, p) => n + p.steals, 0),
     hours, busiestHour: busiest(hours), awards,
     hasLog: entries.some((e) => e.kind !== 'chat'),

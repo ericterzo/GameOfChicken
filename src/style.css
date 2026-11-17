@@ -351,3 +351,11 @@ input:not([type='checkbox']):not([type='radio']), select {
 .cosy-music { position: absolute; top: 10px; right: 10px; z-index: 2; background: rgba(255, 250, 240, 0.85); }
 .cosy .scene [data-uid] { cursor: pointer; }
 [data-cry] { cursor: pointer; }
+
+/* Cooperative rules */
+.tag-pill.coop { background: #3c7a3b; color: #fff; }
+.coop-note { margin: 10px 2px; font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+.coop-note.danger { color: var(--bad); font-weight: 700; }
+.scene .fox { animation: fox-in 0.5s ease-out; }
+@keyframes fox-in { from { transform: translate(-60px, 262px); opacity: 0; } to { transform: translate(150px, 262px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .scene .fox { animation: none; } }

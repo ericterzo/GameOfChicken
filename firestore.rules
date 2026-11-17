@@ -100,7 +100,7 @@ service cloud.firestore {
       function settingsUnchanged() {
         return changed().hasOnly(['status', 'winnerUids', 'eating', 'members', 'memberUids',
                                   'invitedUids', 'declinedUids', 'createdAt', 'endsAt', 'claimedUids', 'shot',
-                                  'duel', 'pact', 'caught', 'shout'])
+                                  'duel', 'pact', 'caught', 'shout', 'feast', 'fox', 'foxSeen'])
           && clockOk()
           && !(after().status == 'waiting' && before().status != 'waiting');
       }
@@ -153,6 +153,18 @@ service cloud.firestore {
             pactMeals(after())[me()].uid == me()
             && pactMeals(after())[me()].startedAt > nowMs() - slack()
             && pactMeals(after())[me()].startedAt < nowMs() + slack()));
+      }
+
+      // Cooperative meals: likewise, a chicken only starts its own, starting now.
+      function feastMeals(d) { return d.get('feast', null) == null ? {} : d.feast; }
+      function feastOk() {
+        let diff = feastMeals(after()).diff(feastMeals(before()));
+        let added = diff.addedKeys();
+        return added.union(diff.changedKeys()).hasOnly([me()])
+          && (!(me() in added) || (
+            feastMeals(after())[me()].uid == me()
+            && feastMeals(after())[me()].startedAt > nowMs() - slack()
+            && feastMeals(after())[me()].startedAt < nowMs() + slack()));
       }
 
       // A battle cry let out by tapping your chicken: only your own, and only now.
@@ -214,6 +226,7 @@ service cloud.firestore {
         && after().createdAt > nowMs() - slack() && after().createdAt < nowMs() + slack()
         && after().endsAt > nowMs()
         && after().endsAt <= nowMs() + fortnight() + slack()
+        && after().get('ruleset', 'classic') in ['classic', 'coop', 'brutal']
         && (after().get('startsAt', null) == null
             || (after().status == 'waiting' && after().startsAt > nowMs() && after().startsAt <= nowMs() + fortnight() + slack()));
 
@@ -222,6 +235,7 @@ service cloud.firestore {
         && (memberMove() || joining() || declining())
         && mealOk()
         && pactOk()
+        && feastOk()
         && shoutOk()
         && frozenOk()
         && claimsOk();
@@ -253,6 +267,9 @@ service cloud.firestore {
             || (entry().kind == 'shot'
               && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'betrayal', 'lost'])
               && entry().uid == me() && entry().at > nowMs() - slack())
+            || (entry().kind == 'fox'
+              && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victims', 'killed', 'lost', 'victimUids', 'killedUid'])
+              && entry().uid == me() && entry().at < nowMs() + slack())
             || (entry().kind == 'duel'
               && entry().keys().hasOnly(['kind', 'at', 'by', 'uid', 'username', 'victimUid', 'victimName', 'outcome'])
               && entry().outcome in ['allied', 'fought', 'brawl']

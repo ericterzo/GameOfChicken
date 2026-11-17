@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countsForRecords, createYard, totalPoints, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, shoot, sizeFor, joinHeadStart, isLurking, othersPresent, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
+  RuleError, settle, shoot, sizeFor, joinHeadStart, isLurking, othersPresent, nextFox, flockCount, FOX_MIN_MS, FOX_MAX_MS, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -691,5 +691,75 @@ describe('joining a game already under way', () => {
   it('gives nothing before the game has started', () => {
     const waiting = createYard({ name: 'W', mode: 'sundown', goal: null, endsAt: s(HOUR), hardcore: false, sleep: null, startsAt: s(600) }, 'a', 'Anna', look, 'WAIT11', T0);
     expect(join(waiting, 'b', 'Ben', look, s(10)).members.b.points).toBe(0);
+  });
+});
+
+describe('cooperative rules', () => {
+  const coop = (ruleset: 'coop' | 'brutal' = 'coop', over: Partial<NewYard> = {}) => {
+    let y = createYard({ name: 'Co', mode: 'sundown', goal: null, endsAt: s(20 * HOUR), hardcore: false, sleep: null, ruleset, ...over }, 'a', 'Anna', look, 'COOP42', T0);
+    y = join(join(y, 'b', 'Ben', look, T0), 'c', 'Carl', look, T0);
+    return y;
+  };
+
+  it('lets chickens eat side by side, with others watching', () => {
+    let y = touch(touch(coop(), 'a', s(0)).yard, 'b', s(1)).yard;
+    y = startEating(y, 'a', s(2), 600).yard;
+    expect(why(y, 'b', s(3))).toBeNull();
+    y = startEating(y, 'b', s(3), 600).yard;
+    y = touch(touch(y, 'a', s(20)).yard, 'b', s(21)).yard;
+    expect(mealOf(y, 'a')).not.toBeNull();
+    expect(mealOf(y, 'b')).not.toBeNull();
+    expect(duelRival(y, 'a', s(22))).toBeNull(); // no standoffs here
+  });
+
+  it('catches everyone eating when the whole flock is in the yard, 1/N of the total each', () => {
+    let y = startEating(coop(), 'a', s(0), 600).yard;
+    y = startEating(leave(y, 'a'), 'b', s(0), 600).yard;
+    y = leave(y, 'b');
+    // Carl walks in at 90 s: Anna and Ben are both "in" (eating), so the flock is complete.
+    const r = touch(y, 'c', s(90));
+    expect(r.interrupted.map((i) => i.victimUid).sort()).toEqual(['a', 'b']);
+    expect(r.yard.members.c.points).toBe(Math.floor(90 / 2) * 2); // half of each meal: 1/N of the 180 total
+    expect(mealOf(r.yard, 'a')).toBeNull();
+    // With only two of three in the yard, walking in is harmless.
+    const two = touch(startEating(coop(), 'a', s(0), 600).yard, 'b', s(30));
+    expect(two.interrupted).toEqual([]);
+    expect(flockCount(two.yard, s(31))).toEqual({ here: 2, of: 3 });
+    // And nobody may start eating while the whole flock is here.
+    const all = touch(touch(touch(coop(), 'a', s(0)).yard, 'b', s(0)).yard, 'c', s(0)).yard;
+    expect(why(all, 'a', s(1))).toBe('The whole flock is in the yard: anyone eating now would be caught.');
+  });
+
+  it('sends the fox every 1 to 5 hours: it takes every meal and puts everyone there out for 20 minutes', () => {
+    const y0 = coop();
+    const fox = nextFox(y0)!;
+    expect(fox - T0).toBeGreaterThanOrEqual(FOX_MIN_MS);
+    expect(fox - T0).toBeLessThanOrEqual(FOX_MAX_MS);
+    // Anna eats a long meal; Ben watches at the moment the fox comes; Carl is away.
+    let y = startEating(y0, 'a', fox - 600_000, 3600).yard;
+    y = touch(y, 'b', fox - 10_000).yard;
+    y = settle(y, fox + 1000);
+    expect(y.fox).toEqual({ at: fox, victims: ['a', 'b'], killed: null, lost: 600 });
+    expect(mealOf(y, 'a')).toBeNull();
+    expect(y.members.a).toMatchObject({ points: 0, outWhy: 'fox', outUntil: fox + 20 * 60_000 });
+    expect(y.members.b.outUntil).toBe(fox + 20 * 60_000);
+    expect(y.members.c.outUntil).toBeUndefined();
+    expect(nextFox(y)! - fox).toBeGreaterThanOrEqual(FOX_MIN_MS); // and it comes again later
+    // Classic yards have no fox.
+    expect(nextFox(yard())).toBeNull();
+  });
+
+  it('under brutal rules the fox also kills one chicken it finds eating, for good', () => {
+    const y0 = coop('brutal');
+    const fox = nextFox(y0)!;
+    let y = startEating(y0, 'a', fox - 60_000, 3600).yard;
+    y = startEating(leave(y, 'a'), 'b', fox - 30_000, 3600).yard;
+    y = settle(leave(y, 'b'), fox + 1);
+    expect(['a', 'b']).toContain(y.fox!.killed);
+    const dead = y.fox!.killed!;
+    expect(y.members[dead].dead).toBe(true);
+    expect(why(y, dead, fox + 25 * 60_000)).toBe('The fox killed your chicken. It can never eat again.');
+    // The dead no longer count towards the whole flock.
+    expect(flockCount(y, fox + 25 * 60_000).of).toBe(2);
   });
 });

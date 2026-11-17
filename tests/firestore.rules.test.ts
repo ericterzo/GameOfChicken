@@ -355,4 +355,17 @@ describe('yards', () => {
     greedy.members.dora.points = 500; // more than the head start it claims
     await assertFails(setDoc(doc(dbFor('dora'), 'yards/y1'), greedy));
   });
+
+  it('lets cooperative chickens start only their own meals, and only known rules', async () => {
+    const now = Date.now();
+    await assertFails(setDoc(doc(dbFor('anna'), 'yards/bad'), { ...freshYard(), ruleset: 'anarchy' }));
+    let y = freshYard({ ruleset: 'coop' });
+    y = join(join(y, 'ben', 'Ben', look, now), 'carl', 'Carl', look, now);
+    await seed(y);
+    const annas = startEating(y, 'anna', Date.now(), 60).yard;
+    await assertFails(setDoc(doc(dbFor('ben'), 'yards/y1'), annas)); // not Ben's to start
+    await assertSucceeds(setDoc(doc(dbFor('anna'), 'yards/y1'), annas));
+    const both = startEating(annas, 'ben', Date.now(), 60).yard; // side by side
+    await assertSucceeds(setDoc(doc(dbFor('ben'), 'yards/y1'), both));
+  });
 });

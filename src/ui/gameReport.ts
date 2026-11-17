@@ -57,6 +57,8 @@ export function reportHtml(yard: Yard, r: YardReport, meUid: string): string {
       p.brawls ? t('Brawls: {0}', num(p.brawls)) : '',
       p.betrayals ? t('Betrayals: {0}', num(p.betrayals)) : '',
       p.betrayed ? t('Betrayed by an ally: {0}', num(p.betrayed)) : '',
+      p.foxed ? t('Caught by the fox: {0}', num(p.foxed)) : '',
+      p.killed ? t('Killed by the fox') : '',
       p.notes ? t('Notes posted: {0}', num(p.notes)) : '',
     ].filter(Boolean);
     return `<details class="friend report-player" ${p.uid === meUid ? 'open' : ''}>
@@ -84,6 +86,7 @@ export function reportHtml(yard: Yard, r: YardReport, meUid: string): string {
       ${cell(t('Feed stolen'), num(r.totalStolen))}
       ${cell(t('Pile left alone'), `${span(r.idleMs)} <small>${share}%</small>`)}
       ${cell(t('Longest quiet spell'), span(r.longestIdleMs))}
+      ${r.foxVisits ? cell(t('Fox raids'), num(r.foxVisits)) : ''}
     </div>
     ${r.awards.length ? `<h3>${t('Awards')}</h3><ul class="awards">${r.awards.map((a) => {
       const [title, detail] = awardText(a.kind, a.value);

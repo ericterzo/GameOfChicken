@@ -42,6 +42,8 @@ export interface SceneOptions {
   cosy?: boolean;
   /** A line written across the bottom of the picture, e.g. who is lurking. */
   caption?: string;
+  /** The fox is bursting in (cooperative rules). */
+  fox?: boolean;
 }
 
 // Where the pile sits, and the standing spots around it: [x offset, y offset].
@@ -446,6 +448,18 @@ function bubble(x: number, y: number, c: SceneChicken): string {
   </g>`;
 }
 
+/** The fox, mid-pounce in front of the pile. */
+const FOX = `<g class="fox" transform="translate(150 262)">
+  <path d="M-52 -18 Q-74 -36 -66 -6 Q-60 6 -40 -4 z" fill="#e8742a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M-66 -6 Q-62 4 -52 0" fill="#fff8ef" stroke="${INK}" stroke-width="1.6"/>
+  <path d="M-46 -6 Q-40 -30 -6 -28 Q18 -26 22 -12 Q20 2 -10 2 Q-38 4 -46 -6 z" fill="#e8742a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M-30 0 L-34 14 M-20 0 L-16 14 M4 0 L0 14 M14 -2 L18 12" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
+  <path d="M12 -26 L18 -44 L26 -30 L34 -42 L36 -24 Q46 -18 52 -12 Q42 -6 30 -8 Q16 -8 12 -18 z" fill="#e8742a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M36 -16 Q46 -14 52 -12 Q42 -8 32 -10 z" fill="#fff8ef"/>
+  <circle cx="51" cy="-12" r="2.2" fill="${INK}"/>
+  <path d="M26 -22 l4 -2" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>
+</g>`;
+
 /** A line across the bottom of the picture, on a soft pill. */
 function caption(text: string): string {
   const w = Math.min(380, text.length * 6.4 + 24);
@@ -511,6 +525,7 @@ export function yardScene(o: SceneOptions): string {
     ${trough()}
     ${tuft(12, 300, 1.5, true)}${tuft(96, 301, 1.2)}${tuft(380, 300, 1.7, true)}${tuft(354, 301, 1.1)}${tuft(206, 302, 1)}
     ${cosy}
+    ${o.fox ? FOX : ''}
     <g pointer-events="none">
       ${lights(light, asleep)}
       ${asleep ? '' : placed.filter((p) => p.c.bubble || p.c.crying).map((p) => bubble(...bubbleAnchor(p.c, p.spot), p.c)).join('')}

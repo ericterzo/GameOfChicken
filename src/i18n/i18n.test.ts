@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it as test } from 'vitest';
-import { MODE_BLURBS, MODE_NAMES } from '../game/rules';
+import { MODE_BLURBS, MODE_NAMES, RULESET_BLURBS, RULESET_NAMES } from '../game/rules';
 import { it } from './it';
 import { pirate } from './pirate';
 
@@ -15,7 +15,7 @@ function files(dir: string): string[] {
 }
 
 function allKeys(srcDir: string): string[] {
-  const keys = new Set<string>([...Object.values(MODE_NAMES), ...Object.values(MODE_BLURBS), 'Walking in…']);
+  const keys = new Set<string>([...Object.values(MODE_NAMES), ...Object.values(MODE_BLURBS), ...Object.values(RULESET_NAMES), ...Object.values(RULESET_BLURBS), 'Walking in…']);
   for (const path of files(srcDir)) {
     const text = readFileSync(path, 'utf8');
     // t('…') anywhere, and the plain-English messages thrown or returned by the rules.

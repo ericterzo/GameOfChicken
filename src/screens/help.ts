@@ -85,6 +85,18 @@ export function helpScreen(root: HTMLElement): void {
       </dl>
       <p>${t('Chickens grow as they score. If the top score is shared, the win is shared.')}</p>
 
+      <h2>${t('Cooperative rules')}</h2>
+      <p>${t('Any of the three games can be played with Classic rules (everything above) or Cooperative rules. You choose when you open the yard.')}</p>
+      <ul>
+        <li>${t('Chickens can eat side by side, and walking in does not catch anyone. There are no standoffs.')}</li>
+        <li>${t('The one thing the flock must never do is be in the yard all at once, watching or eating. The chicken whose arrival completes the flock catches everyone eating, and takes 1/N of all it ruined, N being how many it caught.')}</li>
+        <li>${t('So nobody can start eating while the whole flock is there.')}</li>
+        <li>${t('A fox drops by at random, every 1 to 5 hours. Every chicken in the yard then, eating or watching, loses the meal in progress and is out of the yard for 20 minutes.')}</li>
+        <li>${t('<strong>Cooperative brutal:</strong> the fox also kills one of the chickens it finds eating, at random. It keeps its score and can watch, but can never eat again.')}</li>
+        <li>${t('Chickens that are dead, or out of the yard, do not count towards the whole flock.')}</li>
+        <li>${t('There is still one winner: the biggest chicken.')}</li>
+      </ul>
+
       <h2>${t('Extra rules a yard can have')}</h2>
       <dl class="modes-help">
         <div><dt>${t('Hardcore')}</dt><dd>${t('No timers, just Start and Stop. Your chicken only eats while the game is open with the screen on. Leave the app and the meal stops, but you keep it.')}</dd></div>

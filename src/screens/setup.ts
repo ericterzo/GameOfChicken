@@ -1,7 +1,7 @@
 // Creating a yard, and joining one by code. Both end with choosing a chicken.
 import type { App, Screen } from '../app';
 import { createYard, findYardByCode, getProfiles, joinYard, unlockedFor, type Profile } from '../api';
-import { joinHeadStart, MAX_YARD_MS, MODE_BLURBS, MODE_NAMES, settle, type Look, type Mode, type NewYard } from '../game/rules';
+import { joinHeadStart, MAX_YARD_MS, MODE_BLURBS, MODE_NAMES, RULESET_BLURBS, RULESET_NAMES, RULESETS, settle, type Look, type Mode, type NewYard, type Ruleset } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
 import { busy, dateTime, el, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
@@ -55,6 +55,13 @@ export const newYardScreen: Screen = (root, app) => {
         <div class="modes">${(Object.keys(MODE_NAMES) as Mode[]).map((m, i) => `
           <label class="mode"><input type="radio" name="mode" value="${m}" ${i === 1 ? 'checked' : ''}>
             <span><strong>${t(MODE_NAMES[m])}</strong><small>${t(MODE_BLURBS[m])}</small></span></label>`).join('')}
+        </div>
+      </div>
+
+      <div class="field"><span class="label">${t('Rules')}</span>
+        <div class="modes">${RULESETS.map((r, i) => `
+          <label class="mode"><input type="radio" name="ruleset" value="${r}" ${i === 0 ? 'checked' : ''}>
+            <span><strong>${t(RULESET_NAMES[r])}</strong><small>${t(RULESET_BLURBS[r])}</small></span></label>`).join('')}
         </div>
       </div>
 
@@ -162,6 +169,7 @@ export const newYardScreen: Screen = (root, app) => {
       const opts: NewYard = {
         name: form.yardName.value,
         mode,
+        ruleset: (form.querySelector<HTMLInputElement>('input[name=ruleset]:checked')?.value ?? 'classic') as Ruleset,
         goal: mode === 'sundown' ? null : Number(form.goal.value),
         endsAt,
         hardcore,
@@ -201,7 +209,7 @@ export const joinScreen: Screen = (root, app, [rawCode]) => {
     const names = yard.memberUids.map((u) => esc(yard.members[u].username)).join(', ');
     const headStart = joinHeadStart(settle(yard, Date.now()));
     card.innerHTML = `<h1>${t('Join {0}', esc(yard.name))}</h1>
-      <p><span class="tag-pill">${t(MODE_NAMES[yard.mode])}</span>${yard.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}</p>
+      <p><span class="tag-pill">${t(MODE_NAMES[yard.mode])}</span>${yard.ruleset && yard.ruleset !== 'classic' ? `<span class="tag-pill coop">${t(RULESET_NAMES[yard.ruleset])}</span>` : ''}${yard.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}</p>
       <p class="muted">${t(MODE_BLURBS[yard.mode])} ${yard.status === 'waiting' && yard.startsAt != null
         ? t('Starts {0}, then runs for {1}.', dateTime(yard.startsAt), span(yard.endsAt - yard.createdAt))
         : yard.status === 'waiting'

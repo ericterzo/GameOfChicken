@@ -3,6 +3,8 @@ export const pirate: Record<string, string> = {
   '(you)': '(that be ye)',
   '1 day': '1 day at sea',
   '1 hour': '1 hour',
+  '<strong>Cooperative brutal:</strong> the fox also kills one of the chickens it finds eating, at random. It keeps its score and can watch, but can never eat again.':
+    '<strong>Brutal crew:</strong> the fox also kills one o’ the birds it finds eatin’, at random. It keeps its haul an’ can watch, but can never eat again.',
   '<strong>Flock</strong> shows your record next to your friends’. Add friends by username.':
     '<strong>Crew</strong> shows yer plunder next to yer mateys’. Press-gang mateys by their pirate name.',
   '<strong>Leaderboard</strong> ranks every chicken in the game.': '<strong>Legends</strong> ranks every scurvy bird on the seven seas.',
@@ -24,6 +26,8 @@ export const pirate: Record<string, string> = {
   'A choice cannot be taken back. If either chicken leaves before both have chosen, the choice is forgotten.':
     'A choice can’t be taken back. If either bird leaves afore both have chosen, the choice be forgotten.',
   'A fixed pile of feed. When it is gone, whoever ate the most wins.': 'A fixed hoard o’ grub. When it be gone, the greediest gullet wins.',
+  'A fox drops by at random, every 1 to 5 hours. Every chicken in the yard then, eating or watching, loses the meal in progress and is out of the yard for 20 minutes.':
+    'A fox drops by at random, every 1 to 5 hours. Every bird in the yard then, eatin’ or watchin’, loses the meal under way an’ is out o’ the yard fer 20 minutes.',
   'A friend': 'A matey',
   'A meal lasts at least 5 seconds.': 'A meal lasts 5 seconds at the least, ye landlubber.',
   'A near miss is walking in within five minutes after another chicken finished a meal; for them it was a close shave. Visits a few minutes apart count as one.':
@@ -53,6 +57,8 @@ export const pirate: Record<string, string> = {
   'Android': 'Android',
   'Another chicken is eating.': 'Another bird be at the grub.',
   'Another chicken is watching. Wait them out.': 'Another bird be keepin’ watch. Wait ’em out.',
+  'Any of the three games can be played with Classic rules (everything above) or Cooperative rules. You choose when you open the yard.':
+    'Any o’ the three games can be sailed with Classic rules (all o’ the above) or Crew rules. Ye choose when ye open the yard.',
   'Anyone can start a yard and choose the game, how long it stays open (up to two weeks) and the extra rules.':
     'Any soul can open a yard and choose the game, how long she stays open (up to a fortnight) and the extra articles.',
   'As soon as only two chickens are left in the yard, any shot not yet fired is ignored, every trigger goes back to ten, and the two chickens get Ally and Fight instead.':
@@ -90,6 +96,7 @@ export const pirate: Record<string, string> = {
   'Cancel': 'Belay that',
   'Cannot reach the server. Check your connection.': 'Can’t raise the mothership. Check yer riggin’ (and yer connection).',
   'Catches': 'Boardin’s',
+  'Caught by the fox: {0}': 'Caught by the fox: {0}',
   'Caught by: {0}': 'Boarded by: {0}',
   'Caught! Another chicken walked in and your meal is gone.': 'Blimey, ye’ve been boarded! Another bird walked in and yer meal be gone.',
   'Change for this yard': 'Change fer this yard',
@@ -99,8 +106,12 @@ export const pirate: Record<string, string> = {
   'Chicken': 'Bird',
   'Chicken by chicken': 'Bird by bird',
   'Chicken saved.': 'Yer bird be shipshape.',
+  'Chickens can eat side by side, and walking in does not catch anyone. There are no standoffs.':
+    'Birds can eat side by side, an’ walkin’ in boards nobody. There be no standoffs.',
   'Chickens grow as they score. If the top score is shared, the win is shared.':
     'Birds fatten as they plunder. If the top haul be shared, so be the glory.',
+  'Chickens that are dead, or out of the yard, do not count towards the whole flock.':
+    'Birds that be dead, or out o’ the yard, don’t count toward the whole crew.',
   'Choose in secret.': 'Choose in secret, matey.',
   'Classic': 'Classic',
   'Close': 'Belay',
@@ -117,6 +128,11 @@ export const pirate: Record<string, string> = {
   'Come back and stop early whenever you like: you keep what you have eaten so far.':
     'Come back and stop early whenever ye fancy: ye keep what ye’ve scoffed so far.',
   'Continue with Google': 'Come aboard with Google',
+  'Cooperative': 'Crew',
+  'Cooperative brutal': 'Brutal crew',
+  'Cooperative rules': 'Crew rules',
+  'Cooperative, but the fox also kills one of the chickens it finds eating.':
+    'Crew rules, but the fox also kills one o’ the birds it finds eatin’.',
   'Could not load the leaderboard. Check your connection.': 'The legends be lost in fog. Check yer connection.',
   'Counting chickens…': 'Countin’ heads…',
   'Counting every chicken…': 'Countin’ every bird on the seven seas…',
@@ -140,13 +156,15 @@ export const pirate: Record<string, string> = {
     'Each shipmate picks a secret meal length. The parley lasts till the longer o’ the two runs out.',
   'Each chooses in secret. You see when the other chicken has decided, but not what they chose.':
     'Each chooses in secret. Ye see when the other bird has decided, but not what they chose.',
+  'Eat side by side, but never let the whole flock be in the yard at once. A fox drops by every few hours.':
+    'Eat side by side, but never let the whole crew be in the yard at once. A fox drops by every few hours.',
   'Eat until the end date. Most points when time runs out wins.': 'Scoff grub till the bell. Most doubloons when time runs out wins.',
   'Eat until the yard closes. Most points at the end wins. The pile shrinks as time runs out.':
     'Scoff grub till the yard closes. Most doubloons at the end wins. The hoard shrinks as the sand runs out.',
   'Eat while nobody is looking. Get caught and you lose the meal.':
     'Scoff grub while no soul be watchin’. Get caught and ye lose the lot. Arr!',
-  'Eating': 'Scoffin’ grub',
   'eating': 'at the grub',
+  'Eating': 'Scoffin’ grub',
   'Eating until you stop.': 'Scoffin’ till ye say avast.',
   'Enter': 'Board',
   'Every chicken in the game, yards still running included. Tap a column to rank by it, or a chicken to add it to your flock. Shows the top {0}.':
@@ -171,6 +189,7 @@ export const pirate: Record<string, string> = {
   'Flock': 'Crew',
   'Flock table': 'Crew’s ledger',
   'Floppy': 'Floppy',
+  'Fox raids': 'Fox raids',
   'Game': 'Game',
   'Game length': 'Length o’ the voyage',
   'Game report': 'Cap’n’s log o’ the game',
@@ -195,6 +214,8 @@ export const pirate: Record<string, string> = {
   'Hours': 'Hours',
   'How does the game work?': 'How does this game work, then?',
   'How to play': 'The Code',
+  'If all {0} are here at once, everyone eating is caught. The fox comes every 1 to 5 hours.':
+    'If all {0} be here at once, everyone eatin’ gets caught. The fox comes every 1 to 5 hours.',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'If any other bird walks in, the parley be broken: any shipmate eatin’ gets caught, an’ ’tis a standoff again.',
   'If you leave and come back while the alliance lasts, you can eat again too, still safe from your ally and still unable to catch them.':
@@ -211,10 +232,12 @@ export const pirate: Record<string, string> = {
   'Invite your flock': 'Summon yer crew',
   'Invited, no answer yet: {0}': 'Summoned, nary a word yet: {0}',
   'iPhone and iPad': 'iPhone and iPad',
+  'It killed {0}.': 'It killed {0}.',
   'Join': 'Board',
   'Join my chicken yard “{0}”. Code: {1}': 'Ahoy! Board me chicken yard “{0}”. Code: {1}',
   'Join this yard': 'Board this yard',
   'Join {0}': 'Board {0}',
+  'Killed by the fox': 'Killed by the fox',
   'Language': 'Tongue',
   'Last Grain': 'The Last Crumb',
   'Leaderboard': 'Legends',
@@ -228,8 +251,8 @@ export const pirate: Record<string, string> = {
   'Looking for your yards…': 'Scannin’ the horizon fer yer yards…',
   'lurking': 'lurkin’',
   'Meals kept': 'Meals kept',
-  'minutes': 'minutes',
   'Minutes': 'Minutes',
+  'minutes': 'minutes',
   'Most active around {0}': 'Most lively around {0}',
   'Most robbed': 'Most plundered',
   'Most time at the pile': 'Most time at the hoard',
@@ -272,6 +295,7 @@ export const pirate: Record<string, string> = {
   'of {0}': 'o’ {0}',
   'Once the alliance is over you are rivals again, and can catch each other as usual.':
     'Once the parley be over ye be rivals again, an’ can board each other as usual.',
+  'One chicken eats at a time. Anyone who walks in catches it.': 'One bird eats at a time. Any scallywag who walks in boards it.',
   'One fights, one allies': 'One fights, one parleys',
   'One fights: the fighter keeps the yard and the other is thrown out for 7 minutes.':
     'One fights: the fighter keeps the yard an’ the other be tossed overboard fer 7 minutes.',
@@ -309,6 +333,7 @@ export const pirate: Record<string, string> = {
   'Recording… let it out!': 'Recordin’… let it rip!',
   'Remove from flock': 'Maroon this one',
   'Round': 'Round',
+  'Rules': 'Articles',
   'Samsung Internet: tap the <strong>≡</strong> menu, then <strong>Add to</strong>, then <strong>Home screen</strong>.':
     'Samsung Internet: tap the <strong>≡</strong> menu, then <strong>Add to</strong>, then <strong>Home screen</strong>.',
   'Save battle cry': 'Stow battle cry',
@@ -326,6 +351,7 @@ export const pirate: Record<string, string> = {
   'Signed in as {0}': 'Sailin’ as {0}',
   'Skip the chicken picker when starting or joining a yard.': 'Skip the bird-pickin’ when ye open or board a yard.',
   'Sleep hours': 'Hammock hours',
+  'So nobody can start eating while the whole flock is there.': 'So no bird can start eatin’ while the whole crew be there.',
   'So when two of you are there together, somebody has to leave first, or you settle it below.':
     'So when two o’ ye be there together, one must blink first, or ye settle it as below.',
   'Spiky': 'Spiky',
@@ -377,6 +403,17 @@ export const pirate: Record<string, string> = {
     'The fighter wins the yard. The bird who offered parley be tossed overboard fer 7 minutes.',
   'The first chicken to reach the target size wins at once. The pile shrinks as the biggest chicken closes in.':
     'The first bird to fatten to the mark wins on the spot. The hoard shrinks as the fattest bird closes in.',
+  'The fox burst in and caught {0}.': 'The fox burst in an’ caught {0}.',
+  'The fox caught you.': 'The fox caught ye.',
+  'The fox caught you. You can go back in {0}.': 'The fox caught ye. Ye can crawl back in {0}.',
+  'The fox killed your chicken! It keeps its score, but can never eat again.':
+    'The fox killed yer bird! It keeps its haul, but can never eat again.',
+  'The fox killed your chicken. It can never eat again.': 'The fox killed yer bird. It can never eat again.',
+  'The fox killed your chicken. You can watch, but never eat again.': 'The fox killed yer bird. Ye can watch, but never eat again.',
+  'The fox killed your chicken. You keep your score and can watch, but you can never eat again.':
+    'The fox killed yer bird. Ye keep yer haul an’ can watch, but ye can never eat again.',
+  'The fox!': 'The fox!',
+  'The fox! It caught you, and you are out of the yard for {0}.': 'The fox! It caught ye, an’ ye be out o’ the yard fer {0}.',
   'The game begins after a wait you choose. Chickens who join early wait in the yard and see the countdown.':
     'The game begins after a wait o’ yer choosin’. Birds who board early wait in the yard and watch the hourglass.',
   'The game is already under way: you start with {0} points, the average of the chickens already in it.':
@@ -390,6 +427,8 @@ export const pirate: Record<string, string> = {
   'The microphone is blocked. Allow it for this site in your browser settings, then try again.':
     'The microphone be blocked. Allow it fer this site in yer browser settings, then try again.',
   'The old name becomes free for someone else.': 'Yer old name be up fer grabs.',
+  'The one thing the flock must never do is be in the yard all at once, watching or eating. The chicken whose arrival completes the flock catches everyone eating, and takes 1/N of all it ruined, N being how many it caught.':
+    'The one thing the crew must never do be all in the yard at once, watchin’ or eatin’. The bird whose arrival completes the crew catches every bird eatin’, an’ takes 1/N o’ all it ruined, N bein’ how many it caught.',
   'The pile holds a fixed amount of feed. When it is all eaten, whoever ate the most wins. Feed from a lost meal goes back in the pile, apart from the stolen third.':
     'The hoard holds a fixed share o’ grub. When ’tis all eaten, the greediest gullet wins. Grub from a lost meal goes back in the hoard, save the plundered third.',
   'The server refused that move.': 'The mothership says nay to that.',
@@ -398,6 +437,8 @@ export const pirate: Record<string, string> = {
   'The standoff': 'The standoff',
   'The start can be at most a fortnight away.': 'The start can be a fortnight off at most.',
   'The start must be at least a minute away.': 'The start must be a minute off at the least.',
+  'The whole flock is in the yard: anyone eating now would be caught.':
+    'The whole crew be in the yard: any bird eatin’ now would be caught.',
   'The yard is yours': 'The yard be yers, Cap’n',
   'The yard must stay open for at least a minute.': 'The yard must stay open a minute at the least.',
   'Then always open the game from that icon. On iPhone the icon keeps its own sign-in, so sign in once more there.':
@@ -405,6 +446,7 @@ export const pirate: Record<string, string> = {
   'There is no standoff to settle.': 'There be no standoff to settle.',
   'There is no time left to eat.': 'There be no time left to eat.',
   'There is nothing left to eat.': 'There be not a crumb left.',
+  'There is still one winner: the biggest chicken.': 'There be still one winner: the fattest bird.',
   'There you can also record a battle cry of up to 5 seconds. It plays when you are caught eating, and when you tap your own chicken in a yard, for everyone there to hear.':
     'There ye can also record a battle cry o’ up to 5 seconds. It plays when ye be caught at the grub, an’ when ye tap yer own bird in a yard, fer all aboard to hear.',
   'This browser cannot record sound.': 'This browser can’t record sound.',
@@ -469,8 +511,8 @@ export const pirate: Record<string, string> = {
   'Yard stays open for': 'Yard stays open fer',
   'Yards': 'Yards',
   'Yards you are already in keep the chicken you chose for them.': 'Yards ye already sail in keep the bird ye chose fer ’em.',
-  'You': 'Ye',
   'you': 'ye',
+  'You': 'Ye',
   'You and your friends side by side. Tap a column to sort by it; tap again to reverse.':
     'Ye and yer mateys, broadside to broadside. Tap a column to sort by it; tap again to turn about.',
   'You and {0} are allies! Choose how long to feed; it stays secret.': 'Ye an’ {0} be shipmates! Choose how long to feed; it stays secret.',
@@ -562,4 +604,7 @@ export const pirate: Record<string, string> = {
   '{0} wins the yard': '{0} plunders the yard',
   '{0} won of {1}': '{0} plundered o’ {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} grub)',
+  '{0}: {1} of {2} in the yard.': '{0}: {1} o’ {2} in the yard.',
+  'You can close the app; your chicken keeps eating. You lose this meal if the whole flock is in the yard at once, or if the fox comes.':
+    'Ye can close the app; yer bird keeps eatin’. Ye lose this meal if the whole crew be in the yard at once, or if the fox comes.',
 };
