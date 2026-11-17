@@ -197,8 +197,8 @@ export const it: Record<string, string> = {
   'How to play': 'Regole',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'Se entra un qualsiasi altro pollo, l’alleanza si rompe: l’alleato che sta mangiando viene beccato, e si torna allo stallo.',
-  'If you leave the yard without picking a length, your length counts as zero.':
-    'Se lasci l’aia senza scegliere una durata, la tua durata vale zero.',
+  'If you leave the yard without picking a length, it counts as zero while you are away. Come back while the alliance still lasts and pick one, and that becomes your agreed length.':
+    'Se lasci l’aia senza scegliere una durata, mentre sei via vale zero. Se torni finché l’alleanza dura e ne scegli una, quella diventa la tua durata concordata.',
   'In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.':
     'In Ultimo Chicco gli alleati si dividono quello che resta del mucchio: chi inizia per secondo può mangiare solo quello che il primo non si è già preso.',
   'in the yard': 'nell’aia',

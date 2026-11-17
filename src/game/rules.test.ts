@@ -558,14 +558,22 @@ describe('ally or fight', () => {
     expect(r.yard.pact).toBeNull();
   });
 
-  it('counts leaving without choosing a length as zero', () => {
+  it('counts leaving without choosing a length as zero, unless you come back and choose in time', () => {
+    // Ben steps away before choosing; Anna eats for a minute.
     let y = startEating(allies(), 'a', s(10), 60).yard;
-    y = leave(y, 'b');
-    y = settle(y, s(20));
-    expect(y.pact!.ends.b).toBe(s(3));
-    expect(allyOf(y, 'a', s(20))).toBe('b'); // Anna's minute still holds
-    y = settle(y, s(80));
-    expect(y.pact).toBeNull();
+    y = settle(leave(y, 'b'), s(40));
+    expect(allyOf(y, 'a', s(40))).toBe('b'); // Anna's minute still holds
+    // If Ben stays away, the alliance ends with Anna's minute.
+    expect(settle(y, s(80)).pact).toBeNull();
+    // Ben comes back within it and chooses five minutes: that is his agreed time.
+    y = startEating(touch(y, 'b', s(50)).yard, 'b', s(50), 300).yard;
+    y = settle(y, s(80)); // Anna's minute is over and she has left
+    const back = touch(y, 'a', s(120));
+    expect(back.interrupted).toEqual([]); // she cannot catch Ben during his agreed time
+    expect(mealOf(back.yard, 'b')).not.toBeNull();
+    // Nor he her, if she eats again meanwhile; once his time is up they are rivals again.
+    expect(allyOf(back.yard, 'a', s(349))).toBe('b');
+    expect(allyOf(settle(back.yard, s(351)), 'a', s(351))).toBeNull();
   });
 
   it('is broken by any other chicken walking in, who catches whoever is eating', () => {

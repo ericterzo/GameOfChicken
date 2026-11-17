@@ -289,31 +289,35 @@ function finishIfOver(yard: Yard, now: number): void {
 
 const present = (yard: Yard, uid: string, now: number) => now - (yard.members[uid]?.lastSeen ?? 0) < PRESENCE_MS;
 
-/** True while an alliance protects its two chickens from each other. */
-export function pactInForce(p: Pact | null | undefined, now: number): boolean {
+/**
+ * True while an alliance protects its two chickens from each other: until the
+ * longer of the two agreed meal lengths runs out. An ally who has not chosen
+ * yet keeps it going while they are in the yard; while they are away, their
+ * length counts as zero, so an alliance nobody uses ends by itself. Coming
+ * back in time and choosing makes their length the agreed one.
+ */
+export function pactInForce(yard: Yard, now: number): boolean {
+  const p = yard.pact;
   if (!p || p.broken) return false;
-  const ends = p.uids.map((u) => p.ends?.[u]);
-  if (ends.some((e) => e === undefined || e === null)) return true; // someone has yet to choose, or is eating in hardcore
-  return now < Math.max(...(ends as number[]));
+  let end = p.at;
+  for (const u of p.uids) {
+    if (!p.started.includes(u)) {
+      if (present(yard, u, now)) return true; // still making up their mind
+      continue; // away without choosing: zero
+    }
+    const e = p.ends?.[u];
+    if (e === undefined || e === null) return true; // a hardcore meal still going
+    end = Math.max(end, e);
+  }
+  return now < end;
 }
 
-/**
- * An ally who walks away without choosing a length has chosen zero. Once the
- * alliance is over and its meals are done, it is forgotten.
- */
+/** Once the alliance is over and its meals are done, it is forgotten. */
 function tidyPact(yard: Yard, now: number): void {
   const p = yard.pact;
   if (!p) return;
   p.ends ??= {};
-  if (!p.broken) {
-    for (const u of p.uids) {
-      if (!p.started.includes(u) && !present(yard, u, now)) {
-        p.started.push(u);
-        p.ends[u] = p.at;
-      }
-    }
-  }
-  if (!pactInForce(p, now) && !Object.keys(p.meals).length) yard.pact = null;
+  if (!pactInForce(yard, now) && !Object.keys(p.meals).length) yard.pact = null;
 }
 
 /** A half-made choice lapses when the standoff it was about is over. */
@@ -368,7 +372,7 @@ export function touch(yard: Yard, uid: string, now: number): Result {
   if (hadAllied && !mealOf(y, uid)) return { yard: y, interrupted };
   if (y.status === 'active') {
     // Any other chicken walking in breaks an alliance: it is a standoff again.
-    if (y.pact && !y.pact.uids.includes(uid) && pactInForce(y.pact, now)) y.pact.broken = true;
+    if (y.pact && !y.pact.uids.includes(uid) && pactInForce(y, now)) y.pact.broken = true;
     const ally = allyOf(y, uid, now);
     for (const e of meals(y)) {
       if (e.uid === uid) {
@@ -421,7 +425,7 @@ export const BRAWL_MS = 12 * 60_000;
 /** `uid`'s ally, while their alliance holds. */
 export function allyOf(yard: Yard, uid: string, now: number): string | null {
   const p = yard.pact;
-  if (!p || !p.uids.includes(uid) || !pactInForce(p, now)) return null;
+  if (!p || !p.uids.includes(uid) || !pactInForce(yard, now)) return null;
   return p.uids.find((u) => u !== uid) ?? null;
 }
 

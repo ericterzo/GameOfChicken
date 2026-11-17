@@ -196,8 +196,8 @@ export const pirate: Record<string, string> = {
   'How to play': 'The Code',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'If any other bird walks in, the parley be broken: any shipmate eatin’ gets caught, an’ ’tis a standoff again.',
-  'If you leave the yard without picking a length, your length counts as zero.':
-    'If ye leave the yard without pickin’ a length, yer length counts as naught.',
+  'If you leave the yard without picking a length, it counts as zero while you are away. Come back while the alliance still lasts and pick one, and that becomes your agreed length.':
+    'If ye leave the yard without pickin’ a length, it counts as naught while ye be away. Come back while the parley still holds an’ pick one, an’ that becomes yer agreed length.',
   'In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.':
     'In The Last Crumb, shipmates share what be left o’ the hoard: whoever starts second can only eat what the first ain’t already claimed.',
   'in the yard': 'in the yard',
