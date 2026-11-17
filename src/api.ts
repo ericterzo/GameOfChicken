@@ -492,7 +492,8 @@ export const MAX_NOTE = 300;
  */
 export interface GunShot { victim: string; betrayal: boolean }
 
-async function drawGun(yardId: string, me: Profile): Promise<GunShot | null> {
+/** Shoot a random other chicken in the yard, if there is one. */
+export async function drawGun(yardId: string, me: Profile): Promise<GunShot | null> {
   return yardTx(async (tx) => {
     const snap = await tx.get(yardRef(yardId));
     if (!snap.exists()) return null;

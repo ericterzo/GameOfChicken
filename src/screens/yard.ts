@@ -2,7 +2,7 @@
 // the yard": it interrupts anyone else eating and blocks them from starting.
 import type { Screen } from '../app';
 import {
-  chooseSide, claimStats, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
+  chooseSide, claimStats, drawGun, finalizeYard, getBoardLog, hasUnclaimed, leaveYard, logVisit, MAX_NOTE, postNote, startEating, startYardNow, stopEating, touchYard, watchBoard, watchYard,
   type BoardEntry, type YardDoc,
 } from '../api';
 import {
@@ -42,6 +42,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       <header class="yard-head"><p class="muted">${t('Walking to the yard…')}</p></header>
       <div class="scene-wrap" id="scene"></div>
       <div class="card panel" id="panel"></div>
+      <div class="trigger-wrap" id="trigger-wrap" hidden><button class="btn trigger" id="trigger" type="button"></button></div>
       <div class="card" id="board"></div>
       <div class="card report" id="report" hidden></div>
       <div class="card notice" id="notice" hidden>
@@ -67,6 +68,12 @@ export const yardScreen: Screen = (root, app, [id]) => {
   const openedAt = Date.now();
   const toasted = new Set<string>();
   let leaving = false;
+  // With three or more chickens in the yard, a trigger that takes ten presses to cock.
+  const COCK = 10;
+  const triggerKey = `trigger:${id}:${uid}`;
+  let clicks = COCK;
+  try { clicks = Math.max(0, Math.min(COCK, Number(localStorage.getItem(triggerKey) ?? COCK))); } catch { /* fresh trigger */ }
+  const saveClicks = () => { try { localStorage.setItem(triggerKey, String(clicks)); } catch { /* lasts until the page closes */ } };
 
   // ----- presence -----
 
@@ -394,10 +401,21 @@ export const yardScreen: Screen = (root, app, [id]) => {
     text('#max-meal', max < seconds ? t('Longest meal possible right now: {0}.', span(max * 1000)) : t('Pick how long to eat. You can come back and stop early.'));
   }
 
+  function paintTrigger(y: Yard, now: number): void {
+    const wrap = root.querySelector<HTMLElement>('#trigger-wrap')!;
+    const show = entered && y.status === 'active' && othersPresent(y, uid, now).length >= 2;
+    if (wrap.hidden !== !show) wrap.hidden = !show;
+    const label = t('Shoot') + (clicks ? '?'.repeat(clicks) : '!');
+    const b = root.querySelector<HTMLButtonElement>('#trigger')!;
+    if (b.textContent !== label) b.textContent = label;
+    b.classList.toggle('cocked', !clicks);
+  }
+
   function paint(): void {
     if (!alive || !yard) return;
     const now = Date.now();
     const y = settle(yard, now);
+    paintTrigger(y, now);
     if (yard.pact?.meals[uid] && !mealOf(y, uid) && !leaving) {
       leaving = true;
       void touchYard(id, uid).catch(() => {}).finally(() => { window.setTimeout(() => { leaving = false; }, 5000); });
@@ -496,6 +514,25 @@ export const yardScreen: Screen = (root, app, [id]) => {
     }
     paint();
   });
+
+  const trigger = root.querySelector<HTMLButtonElement>('#trigger')!;
+  trigger.onclick = () => {
+    if (clicks > 0) {
+      clicks -= 1;
+      saveClicks();
+      paint();
+      return;
+    }
+    void busy(trigger, async () => {
+      const shot = await drawGun(id, app.profile);
+      clicks = COCK;
+      saveClicks();
+      if (shot?.betrayal) toast(t('Bang! You betrayed {0}. The whole yard will see your horns.', shot.victim), 'good');
+      else if (shot) toast(t('Bang! You shot {0}. The yard is yours for a few minutes.', shot.victim), 'good');
+      else toast(t('Nobody left to shoot.'));
+      paint();
+    });
+  };
 
   let stopBoard: (() => void) | null = null;
   const noteForm = root.querySelector<HTMLFormElement>('#note-form')!;

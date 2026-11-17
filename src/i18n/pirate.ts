@@ -479,4 +479,6 @@ export const pirate: Record<string, string> = {
   '{0} wins the yard': '{0} plunders the yard',
   '{0} won of {1}': '{0} plundered o’ {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} grub)',
+  'Shoot': 'Fire',
+  'Nobody left to shoot.': 'No scallywag left to shoot.',
 };
