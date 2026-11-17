@@ -56,8 +56,8 @@ export function helpScreen(root: HTMLElement): void {
         <li>${t('Each ally picks a secret meal length. The alliance lasts until the longer of the two runs out.')}</li>
         <li>${t('If you leave the yard without picking a length, it counts as zero while you are away. Come back while the alliance still lasts and pick one, and that becomes your agreed length.')}</li>
         <li>${t('Your ally cannot catch you, but any other chicken who walks in can, and catches both of you if you are both eating.')}</li>
-        <li>${t('When your meal is over, or you stop it early, you keep the feed and your chicken leaves the yard.')}</li>
-        <li>${t('While the alliance lasts you can come back and eat again, still safe from your ally and still unable to catch them.')}</li>
+        <li>${t('When your meal is over, or you stop it early, you keep the feed and can start eating again, as allies, while the alliance lasts. Any meal after your first ends when the alliance does.')}</li>
+        <li>${t('If you leave and come back while the alliance lasts, you can eat again too, still safe from your ally and still unable to catch them.')}</li>
         <li>${t('Once the alliance is over you are rivals again, and can catch each other as usual.')}</li>
         <li>${t('If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.')}</li>
         <li>${t('In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.')}</li>

@@ -527,35 +527,39 @@ describe('ally or fight', () => {
     y = touch(touch(y, 'a', s(20)).yard, 'b', s(21)).yard;
     expect(mealOf(y, 'a')).not.toBeNull();
     expect(mealOf(y, 'b')).not.toBeNull();
-    // When Anna's meal is over she has eaten it all and left the yard.
-    y = settle(y, s(80));
+    // Anna's meal is over: she keeps it all and stays in the yard with her ally.
+    y = touch(y, 'a', s(80)).yard;
     expect(y.members.a.points).toBe(60);
-    expect(y.members.a.lastSeen).toBe(0);
+    expect(y.members.a.lastSeen).toBe(s(80));
     expect(mealOf(y, 'b')).not.toBeNull();
   });
 
-  it('lasts until the longer chosen meal runs out: a finished ally may eat again, then they are rivals', () => {
+  it('lets an ally stop early, stay, and eat again until the alliance ends; then they are rivals', () => {
     let y = startEating(allies(), 'a', s(10), 60).yard; // Anna chose a minute
     y = startEating(y, 'b', s(11), 300).yard; // Ben chose five
-    y = settle(y, s(80)); // Anna is done and gone
-    // Anna comes back while Ben is still eating: she cannot catch him, but may eat again, still safe from him.
-    let r = touch(y, 'a', s(100));
-    expect(r.interrupted).toEqual([]);
-    y = startEating(r.yard, 'a', s(100), 3600).yard;
-    y = touch(y, 'b', s(200)).yard;
+    y = stopEating(y, 'a', s(40)).yard; // Anna stops early and keeps 30
+    expect(y.members.a).toMatchObject({ points: 30, lastSeen: s(40) });
+    expect(why(y, 'a', s(41))).toBeNull(); // she may start again straight away
+    // Her next meal ends with the alliance (Ben's five minutes), however long she asks for.
+    y = startEating(y, 'a', s(50), 3600).yard;
+    expect(mealOf(y, 'a')!.endsAt).toBe(s(311));
+    y = touch(touch(y, 'a', s(200)).yard, 'b', s(200)).yard; // nobody catches anybody meanwhile
     expect(mealOf(y, 'a')).not.toBeNull();
-    // Ben's five minutes run out at 311: the alliance is over and Ben leaves, catching nobody on his way out.
-    const out = touch(y, 'b', s(315));
-    expect(out.interrupted).toEqual([]);
-    expect(out.yard.members.b.lastSeen).toBe(0);
-    expect(out.yard.members.b.points).toBe(300);
-    // Back in, he catches his ex-ally.
-    y = settle(y, s(320));
-    expect(y.members.b.lastSeen).toBe(0);
-    expect(allyOf(y, 'a', s(320))).toBeNull();
-    r = touch(y, 'b', s(330));
-    expect(r.interrupted[0]).toMatchObject({ victimUid: 'a', byUid: 'b', pointsLost: 230 });
-    expect(r.yard.pact).toBeNull();
+    // At 311 both meals are over and so is the alliance: two rivals, nobody eating.
+    y = settle(touch(touch(y, 'a', s(300)).yard, 'b', s(300)).yard, s(312));
+    expect(y.pact).toBeNull();
+    expect(y.members.a.points).toBe(30 + 261);
+    expect(y.members.b.points).toBe(300);
+    expect(why(y, 'a', s(313))).toBe('Another chicken is watching. Wait them out.');
+  });
+
+  it('lets an ally whose meal ran out while away come back and eat again, while the alliance lasts', () => {
+    let y = startEating(allies(), 'a', s(10), 60).yard;
+    y = startEating(y, 'b', s(11), 300).yard;
+    y = settle(leave(y, 'a'), s(80)); // Anna's minute ran out with her app closed
+    const back = touch(y, 'a', s(100));
+    expect(back.interrupted).toEqual([]); // she cannot catch Ben
+    expect(why(back.yard, 'a', s(101))).toBeNull(); // and may eat again, as an ally
   });
 
   it('counts leaving without choosing a length as zero, unless you come back and choose in time', () => {
@@ -567,13 +571,11 @@ describe('ally or fight', () => {
     expect(settle(y, s(80)).pact).toBeNull();
     // Ben comes back within it and chooses five minutes: that is his agreed time.
     y = startEating(touch(y, 'b', s(50)).yard, 'b', s(50), 300).yard;
-    y = settle(y, s(80)); // Anna's minute is over and she has left
-    const back = touch(y, 'a', s(120));
-    expect(back.interrupted).toEqual([]); // she cannot catch Ben during his agreed time
-    expect(mealOf(back.yard, 'b')).not.toBeNull();
-    // Nor he her, if she eats again meanwhile; once his time is up they are rivals again.
-    expect(allyOf(back.yard, 'a', s(349))).toBe('b');
-    expect(allyOf(settle(back.yard, s(351)), 'a', s(351))).toBeNull();
+    const later = touch(settle(y, s(80)), 'a', s(120));
+    expect(later.interrupted).toEqual([]); // Anna cannot catch Ben during his agreed time
+    expect(mealOf(later.yard, 'b')).not.toBeNull();
+    expect(allyOf(later.yard, 'a', s(349))).toBe('b');
+    expect(allyOf(settle(later.yard, s(351)), 'a', s(351))).toBeNull();
   });
 
   it('is broken by any other chicken walking in, who catches whoever is eating', () => {

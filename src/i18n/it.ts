@@ -45,8 +45,7 @@ export const it: Record<string, string> = {
   'Alliances: {0}': 'Alleanze: {0}',
   'Allianceship and standoffs': 'Alleanze e stalli',
   'Allied': 'Alleati',
-  'Allied meal: {0} cannot catch you, but any other chicken can. When it is over you leave the yard.':
-    'Pasto alleato: {0} non può beccarti, ma qualsiasi altro pollo sì. Quando finisce lasci l’aia.',
+  'Allied meal: {0} cannot catch you, but any other chicken can.': 'Pasto alleato: {0} non può beccarti, ma qualsiasi altro pollo sì.',
   'Ally': 'Alleati',
   'Already have a chicken? Sign in': 'Hai già un pollo? Accedi',
   'Already in your flock.': 'È già nel tuo stormo.',
@@ -199,6 +198,8 @@ export const it: Record<string, string> = {
   'How to play': 'Regole',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'Se entra un qualsiasi altro pollo, l’alleanza si rompe: l’alleato che sta mangiando viene beccato, e si torna allo stallo.',
+  'If you leave and come back while the alliance lasts, you can eat again too, still safe from your ally and still unable to catch them.':
+    'Se te ne vai e torni finché l’alleanza dura, puoi mangiare di nuovo anche così, sempre al sicuro dal tuo alleato e senza poterlo beccare.',
   'If you leave the yard without picking a length, it counts as zero while you are away. Come back while the alliance still lasts and pick one, and that becomes your agreed length.':
     'Se lasci l’aia senza scegliere una durata, mentre sei via vale zero. Se torni finché l’alleanza dura e ne scegli una, quella diventa la tua durata concordata.',
   'In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.':
@@ -386,6 +387,7 @@ export const it: Record<string, string> = {
   'The game only starts once every invited chicken has joined or declined. You can still start it yourself.':
     'Il gioco inizia solo quando ogni pollo invitato è entrato o ha rifiutato. Puoi comunque farlo partire tu.',
   'The game starts in': 'Il gioco inizia tra',
+  'The game’s code on GitHub': 'Il codice del gioco su GitHub',
   'The goal must be at least 10.': 'L’obiettivo deve essere almeno 10.',
   'The microphone is blocked. Allow it for this site in your browser settings, then try again.':
     'Il microfono è bloccato. Consentilo per questo sito nelle impostazioni del browser, poi riprova.',
@@ -453,10 +455,8 @@ export const it: Record<string, string> = {
     'Quando nell’aia ci sono esattamente due polli e nessuno sta mangiando, entrambi vedono due pulsanti sotto l’aia: <strong>Alleati</strong> e <strong>Lotta</strong>.',
   'When three or more chickens are in the yard, each sees a button that reads <strong>Shoot??????????</strong>.':
     'Quando nell’aia ci sono tre o più polli, ognuno vede un pulsante con scritto <strong>Spara??????????</strong>.',
-  'When your meal is over, or you stop it early, you keep the feed and your chicken leaves the yard.':
-    'Quando il tuo pasto finisce, o lo interrompi prima, tieni il mangime e il tuo pollo lascia l’aia.',
-  'While the alliance lasts you can come back and eat again, still safe from your ally and still unable to catch them.':
-    'Finché l’alleanza dura puoi tornare e mangiare di nuovo, sempre al sicuro dal tuo alleato e senza poterlo beccare.',
+  'When your meal is over, or you stop it early, you keep the feed and can start eating again, as allies, while the alliance lasts. Any meal after your first ends when the alliance does.':
+    'Quando il tuo pasto finisce, o lo interrompi prima, tieni il mangime e puoi ricominciare a mangiare, da alleati, finché l’alleanza dura. Ogni pasto dopo il primo finisce quando finisce l’alleanza.',
   'While you were away': 'Mentre non c’eri',
   'Winner': 'Vincitore',
   'With <strong>Wait for everyone</strong>, the game only starts once every invited chicken has answered, and the clock starts then.':
@@ -522,8 +522,6 @@ export const it: Record<string, string> = {
   'You were thrown out of this yard. Wait before going back in.': 'Sei stato cacciato da questa aia. Aspetta prima di rientrare.',
   'You win the yard': 'Hai vinto l’aia',
   'Your account is deleted. Goodbye!': 'Il tuo account è stato eliminato. Addio!',
-  'Your allied meal is over and your chicken leaves the yard. Banked {0} points.':
-    'Il tuo pasto alleato è finito e il tuo pollo lascia l’aia. Hai messo al sicuro {0} punti.',
   'Your ally cannot catch you, but any other chicken who walks in can, and catches both of you if you are both eating.':
     'Il tuo alleato non può beccarti, ma qualsiasi altro pollo che entra sì, e vi becca entrambi se state mangiando tutti e due.',
   'Your battle cry is saved.': 'Il tuo grido di battaglia è salvato.',
@@ -532,9 +530,10 @@ export const it: Record<string, string> = {
   'Your chicken': 'Il tuo pollo',
   'Your chicken and your record': 'Il tuo pollo e il tuo palmarès',
   'Your chicken for this yard': 'Il tuo pollo per questa aia',
-  'Your feeding time is secret. {0} cannot catch you, but any other chicken can. When your meal is over, you leave the yard.':
-    'Il tuo tempo per mangiare è segreto. {0} non può beccarti, ma qualsiasi altro pollo sì. Quando il tuo pasto finisce, lasci l’aia.',
+  'Your feeding time is secret. {0} cannot catch you, but any other chicken can. Stop or finish, and you can eat again while the alliance lasts.':
+    'Il tuo tempo per mangiare è segreto. {0} non può beccarti, ma qualsiasi altro pollo sì. Che tu ti fermi o finisca, puoi mangiare di nuovo finché l’alleanza dura.',
   'Your flock': 'Il tuo stormo',
+  'Your meal is over. Banked {0} points.': 'Il tuo pasto è finito. Hai messo al sicuro {0} punti.',
   'Your record': 'Il tuo palmarès',
   'Your record, flock and yards come with you.': 'Il tuo palmarès, il tuo stormo e le tue aie restano con te.',
   'Your yards': 'Le tue aie',
@@ -566,5 +565,4 @@ export const it: Record<string, string> = {
   '{0} wins the yard': '{0} vince l’aia',
   '{0} won of {1}': '{0} vinte su {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} di mangime)',
-  'The game’s code on GitHub': 'Il codice del gioco su GitHub',
 };

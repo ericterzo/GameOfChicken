@@ -73,6 +73,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   let leaving = false;
   let toldOut: number | undefined; // the ban I have already been told about
   let wasOut = false;
+  let stoppedAt = 0; // I pressed Stop myself (its own message says what was banked)
   // Battle cries and speech bubbles.
   const crying = new Map<string, number>(); // uid -> crying until
   let heardCatch = openedAt - 2000;
@@ -348,7 +349,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     if (myMeal) {
       const allyName = myMeal.allyUid ? esc(y.members[myMeal.allyUid]?.username ?? t('A chicken')) : '';
       const note = allyName
-        ? t('Allied meal: {0} cannot catch you, but any other chicken can. When it is over you leave the yard.', allyName)
+        ? t('Allied meal: {0} cannot catch you, but any other chicken can.', allyName)
         : y.hardcore
         ? t('Hardcore: keep this screen on. Leaving the app stops the meal and keeps what you ate.')
         : t('You can close the app; your chicken keeps eating. Anyone who walks in takes the whole meal.');
@@ -359,6 +360,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
         const b = panel.querySelector<HTMLButtonElement>('#stop')!;
         b.onclick = () => void busy(b, async () => {
           const before = yard?.members[uid].points ?? 0;
+          stoppedAt = Date.now();
           const r = await stopEating(id, uid);
           toast(t('Banked {0} points.', num(r.yard.members[uid].points - before)), 'good');
         });
@@ -419,7 +421,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     const allyName = ally ? esc(y.members[ally].username) : '';
     const heading = ally ? t('You are allied with {0}', allyName) : t('The yard is yours');
     const allyNote = ally
-      ? `<p class="muted small">${t('Your feeding time is secret. {0} cannot catch you, but any other chicken can. When your meal is over, you leave the yard.', allyName)}</p>` : '';
+      ? `<p class="muted small">${t('Your feeding time is secret. {0} cannot catch you, but any other chicken can. Stop or finish, and you can eat again while the alliance lasts.', allyName)}</p>` : '';
     if (y.hardcore) {
       set(`ready:hardcore:${allyName}`, `<h2>${heading}</h2>${allyNote}
         <button class="btn primary" id="start" type="button">${t('Start feeding')}</button>
@@ -551,11 +553,9 @@ export const yardScreen: Screen = (root, app, [id]) => {
     }
     const prev = yard;
     yard = next;
-    // My allied meal is over (eaten up, or stopped): the chicken leaves the yard.
-    if (prev?.pact?.meals[uid] && !mealOf(next, uid) && me.mealsLost === prev.members[uid].mealsLost) {
-      toast(t('Your allied meal is over and your chicken leaves the yard. Banked {0} points.', num(me.points - prev.members[uid].points)), 'good');
-      app.go('#/');
-      return;
+    // My allied meal ran out by itself: say so (stopping it myself already says so).
+    if (prev?.pact?.meals[uid] && !mealOf(next, uid) && me.mealsLost === prev.members[uid].mealsLost && Date.now() - stoppedAt > 5000) {
+      toast(t('Your meal is over. Banked {0} points.', num(me.points - prev.members[uid].points)), 'good');
     }
     if (!stopBoard) {
       notice.hidden = false;

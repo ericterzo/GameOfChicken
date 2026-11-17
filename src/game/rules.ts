@@ -260,13 +260,12 @@ export function mealPoints(yard: Yard, now: number, e: Eating | null = yard.eati
   return Math.max(0, Math.floor((until - e.startedAt) / 1000));
 }
 
-/** Bank a meal's points as they stand at `at`. An allied chicken then leaves the yard. */
+/** Bank a meal's points as they stand at `at`. */
 function bankMeal(yard: Yard, e: Eating, at: number): void {
   const allied = !!yard.pact?.meals[e.uid];
   if (allied && yard.pact!.ends?.[e.uid] === null) yard.pact!.ends[e.uid] = Math.max(at, e.startedAt);
   yard.members[e.uid].points += mealPoints(yard, at, e);
   dropMeal(yard, e.uid);
-  if (allied) yard.members[e.uid].lastSeen = 0;
 }
 
 function finishIfOver(yard: Yard, now: number): void {
@@ -312,6 +311,26 @@ export function pactInForce(yard: Yard, now: number): boolean {
     end = Math.max(end, e);
   }
   return now < end;
+}
+
+/**
+ * When the alliance will be over, once that is settled: null while an ally has
+ * yet to choose (and is here to do so), or a hardcore meal is still going.
+ */
+export function pactEnd(yard: Yard, now: number): number | null {
+  const p = yard.pact;
+  if (!p || p.broken) return null;
+  let end = p.at;
+  for (const u of p.uids) {
+    if (!p.started.includes(u)) {
+      if (present(yard, u, now)) return null;
+      continue;
+    }
+    const e = p.ends?.[u];
+    if (e === undefined || e === null) return null;
+    end = Math.max(end, e);
+  }
+  return end;
 }
 
 /** Once the alliance is over and its meals are done, it is forgotten. */
@@ -366,7 +385,6 @@ export function settle(yard: Yard, now: number): Yard {
 export function touch(yard: Yard, uid: string, now: number): Result {
   const y = clone(yard);
   if (!y.members[uid]) throw new RuleError('You are not in this yard.');
-  const hadAllied = !!y.pact?.meals[uid];
   if (isOut(y, uid, now)) {
     // Thrown out: may watch from the edge of the yard, but is not in it. Catches nobody, blocks nobody.
     settleInPlace(y, now);
@@ -375,8 +393,6 @@ export function touch(yard: Yard, uid: string, now: number): Result {
   }
   settleInPlace(y, now);
   const interrupted: InterruptEvent[] = [];
-  // My allied meal has just run out: my chicken leaves the yard, and catches nobody on the way out.
-  if (hadAllied && !mealOf(y, uid)) return { yard: y, interrupted };
   if (y.status === 'active') {
     // Any other chicken walking in breaks an alliance: it is a standoff again.
     if (y.pact && !y.pact.uids.includes(uid) && pactInForce(y, now)) y.pact.broken = true;
@@ -575,6 +591,11 @@ export function maxMealSeconds(yard: Yard, uid: string, now: number): number {
   let end = yard.endsAt;
   const sleepAt = nextSleepStart(yard.sleep, now);
   if (sleepAt != null) end = Math.min(end, sleepAt);
+  // A further meal under an alliance ends with it, so nobody is left eating in front of an ex-ally.
+  if (allyOf(yard, uid, now) && yard.pact?.started.includes(uid)) {
+    const pact = pactEnd(yard, now);
+    if (pact != null) end = Math.min(end, pact);
+  }
   const byClock = Math.floor((end - now) / 1000);
   return Math.max(0, Math.min(byClock, roomLeft(yard, uid)));
 }
