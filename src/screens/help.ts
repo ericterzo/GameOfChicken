@@ -75,7 +75,6 @@ export function helpScreen(root: HTMLElement): void {
       <h3>${t('Thrown out')}</h3>
       <ul>
         <li>${t('A chicken thrown out of a yard cannot go back in until its time is up. The yard’s row on your home screen says who did it and counts down the wait.')}</li>
-        <li>${t('If the shot hits your own ally, that is a betrayal: they lose the meal they were eating, the yard’s notice board says so, and the traitor wears red horns for the rest of that game.')}</li>
       </ul>
 
       <h2>${t('Three games')}</h2>

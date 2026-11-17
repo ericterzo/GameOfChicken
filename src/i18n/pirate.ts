@@ -196,8 +196,6 @@ export const pirate: Record<string, string> = {
   'How to play': 'The Code',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'If any other bird walks in, the parley be broken: any shipmate eatin’ gets caught, an’ ’tis a standoff again.',
-  'If the shot hits your own ally, that is a betrayal: they lose the meal they were eating, the yard’s notice board says so, and the traitor wears red horns for the rest of that game.':
-    'If the shot hits yer own shipmate, that be betrayal: they lose the meal they were eatin’, the ship’s log tells all, an’ the traitor wears red horns fer the rest o’ that game.',
   'If you leave the yard without picking a length, your length counts as zero.':
     'If ye leave the yard without pickin’ a length, yer length counts as naught.',
   'In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.':

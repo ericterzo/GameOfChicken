@@ -197,8 +197,6 @@ export const it: Record<string, string> = {
   'How to play': 'Regole',
   'If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.':
     'Se entra un qualsiasi altro pollo, l’alleanza si rompe: l’alleato che sta mangiando viene beccato, e si torna allo stallo.',
-  'If the shot hits your own ally, that is a betrayal: they lose the meal they were eating, the yard’s notice board says so, and the traitor wears red horns for the rest of that game.':
-    'Se il colpo prende il tuo alleato, è un tradimento: perde il pasto che stava mangiando, la bacheca dell’aia lo racconta, e il traditore porta le corna rosse fino alla fine di quella partita.',
   'If you leave the yard without picking a length, your length counts as zero.':
     'Se lasci l’aia senza scegliere una durata, la tua durata vale zero.',
   'In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.':
