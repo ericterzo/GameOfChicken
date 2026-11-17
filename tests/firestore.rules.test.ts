@@ -1,6 +1,6 @@
 // Runs against the Firestore emulator: npm run test:rules
 import { readFileSync } from 'node:fs';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
@@ -8,7 +8,7 @@ import {
   addDoc, Bytes, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import {
-  choose, createYard, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
+  choose, createYard, joinHeadStart, declineInvite, join, settle, startEating, startNow, touch, type Look, type Yard,
 } from '../src/game/rules';
 
 const look: Look = { body: '#fff', beak: 'short', beakColor: '#f90', comb: 'classic', combColor: '#d00' };
@@ -341,5 +341,18 @@ describe('yards', () => {
     await assertSucceeds(updateDoc(doc(dbFor('ben'), 'yards/y1'), { shout: { uid: 'ben', at: Date.now() } }));
     await assertFails(updateDoc(doc(dbFor('ben'), 'yards/y1'), { shout: { uid: 'anna', at: Date.now() } }));
     await assertFails(updateDoc(doc(dbFor('carl'), 'yards/y1'), { shout: { uid: 'carl', at: Date.now() } }));
+  });
+
+  it('lets a newcomer to a game under way start on a head start, and nothing more', async () => {
+    const y = join(freshYard(), 'ben', 'Ben', look, Date.now());
+    y.members.anna.points = 300;
+    y.members.ben.points = 100;
+    await seed(y);
+    const carl = join(y, 'carl', 'Carl', look, Date.now());
+    expect(carl.members.carl.points).toBe(joinHeadStart(y));
+    await assertSucceeds(setDoc(doc(dbFor('carl'), 'yards/y1'), carl));
+    const greedy = join(y, 'dora', 'Dora', look, Date.now());
+    greedy.members.dora.points = 500; // more than the head start it claims
+    await assertFails(setDoc(doc(dbFor('dora'), 'yards/y1'), greedy));
   });
 });

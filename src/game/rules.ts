@@ -26,6 +26,8 @@ export interface Member {
   lastSeen: number;
   /** When this chicken last walked into the yard (after being away). */
   arrivedAt?: number;
+  /** Points given on joining a game already under way: not eaten from the pile. */
+  headStart?: number;
   mealsLost: number;
   mealsStolen: number;
   /** Feed taken from others by catching them, and feed lost by being caught. Absent on older yards. */
@@ -195,8 +197,9 @@ export function nextWake(sleep: Sleep | null, t: number): number | null {
 
 // ---------- scoring helpers ----------
 
+/** Feed actually eaten from the pile, by everyone (head starts are not part of it). */
 export function totalPoints(yard: Yard): number {
-  return Object.values(yard.members).reduce((s, m) => s + m.points, 0);
+  return Object.values(yard.members).reduce((s, m) => s + m.points - (m.headStart ?? 0), 0);
 }
 
 export function leaderPoints(yard: Yard): number {
@@ -621,13 +624,23 @@ export function join(yard: Yard, uid: string, username: string, look: Look, now:
   if (y.members[uid]) return y;
   if (y.status === 'finished') throw new RuleError('This yard is closed.');
   if (y.memberUids.length >= MAX_MEMBERS) throw new RuleError('This yard is full.');
+  // Joining a game already under way: start level with the average chicken already in it.
+  const headStart = joinHeadStart(y);
   y.members[uid] = {
-    username, look, points: 0, lastSeen: 0, mealsLost: 0, mealsStolen: 0, statsClaimed: false,
+    username, look, points: headStart, lastSeen: 0, mealsLost: 0, mealsStolen: 0, statsClaimed: false,
+    ...(headStart ? { headStart } : {}),
   };
   y.memberUids.push(uid);
   if (y.invitedUids?.includes(uid)) y.invitedUids = y.invitedUids.filter((u) => u !== uid);
   startIfEveryoneAnswered(y, now);
   return y;
+}
+
+/** The points a chicken joining now would start with: the average banked score, once the game is under way. */
+export function joinHeadStart(yard: Yard): number {
+  if (yard.status !== 'active' || !yard.memberUids.length) return 0;
+  const sum = yard.memberUids.reduce((n, u) => n + (yard.members[u]?.points ?? 0), 0);
+  return Math.floor(sum / yard.memberUids.length);
 }
 
 // ---------- invitations ----------
@@ -797,7 +810,7 @@ export function yardTally(yard: Yard, uid: string, now: number): Tally {
     wins: won ? 1 : 0,
     losses: over && !won ? 1 : 0,
     biggestChicken: points,
-    totalPoints: points,
+    totalPoints: points - (m.headStart ?? 0), // feed eaten, not the head start
     feedStolen: m.feedStolen ?? 0,
     feedLost: m.feedLost ?? 0,
     mealsStolen: m.mealsStolen,
@@ -841,7 +854,7 @@ export function pileFraction(yard: Yard, now: number): number {
   const live = (u: string) => livePoints(yard, u, now);
   const uids = Object.keys(yard.members);
   if (yard.mode === 'lastGrain' && yard.goal) {
-    return clamp(1 - uids.reduce((s, u) => s + live(u), 0) / yard.goal);
+    return clamp(1 - uids.reduce((s, u) => s + live(u) - (yard.members[u].headStart ?? 0), 0) / yard.goal);
   }
   if (yard.mode === 'fatHen' && yard.goal) {
     return clamp(1 - Math.max(0, ...uids.map(live)) / yard.goal);

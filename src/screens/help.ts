@@ -96,6 +96,7 @@ export function helpScreen(root: HTMLElement): void {
       <ul>
         <li>${t('Anyone can start a yard and choose the game, how long it stays open (up to two weeks) and the extra rules.')}</li>
         <li>${t('Others join with the yard’s code or invite link. A yard holds up to {0} chickens.', MAX_MEMBERS)}</li>
+        <li>${t('A chicken who joins a game already under way starts with the average score of the chickens already in it. That head start is not taken from the pile.')}</li>
         <li>${t('You can invite friends from your flock when starting a yard. They accept or decline from their home screen.')}</li>
         <li>${t('With <strong>Wait for everyone</strong>, the game only starts once every invited chicken has answered, and the clock starts then.')}</li>
       </ul>

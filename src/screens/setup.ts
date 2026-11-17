@@ -1,9 +1,9 @@
 // Creating a yard, and joining one by code. Both end with choosing a chicken.
 import type { App, Screen } from '../app';
 import { createYard, findYardByCode, getProfiles, joinYard, unlockedFor, type Profile } from '../api';
-import { MAX_YARD_MS, MODE_BLURBS, MODE_NAMES, type Look, type Mode, type NewYard } from '../game/rules';
+import { joinHeadStart, MAX_YARD_MS, MODE_BLURBS, MODE_NAMES, settle, type Look, type Mode, type NewYard } from '../game/rules';
 import { chickenSvg } from '../ui/chicken';
-import { busy, dateTime, el, esc, span, toast } from '../ui/dom';
+import { busy, dateTime, el, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { lookEditor } from '../ui/lookEditor';
 
@@ -199,6 +199,7 @@ export const joinScreen: Screen = (root, app, [rawCode]) => {
       return;
     }
     const names = yard.memberUids.map((u) => esc(yard.members[u].username)).join(', ');
+    const headStart = joinHeadStart(settle(yard, Date.now()));
     card.innerHTML = `<h1>${t('Join {0}', esc(yard.name))}</h1>
       <p><span class="tag-pill">${t(MODE_NAMES[yard.mode])}</span>${yard.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}</p>
       <p class="muted">${t(MODE_BLURBS[yard.mode])} ${yard.status === 'waiting' && yard.startsAt != null
@@ -206,6 +207,7 @@ export const joinScreen: Screen = (root, app, [rawCode]) => {
         : yard.status === 'waiting'
         ? t('Starts once every invited chicken has answered, then runs for {0}.', span(yard.endsAt - yard.createdAt))
         : t('Closes {0}.', dateTime(yard.endsAt))}<br>${t('In the yard: {0}.', names)}</p>
+      ${headStart ? `<p class="callout">${t('The game is already under way: you start with {0} points, the average of the chickens already in it.', num(headStart))}</p>` : ''}
       <div id="picker"></div>
       <button class="btn primary" id="join-go" type="button">${t('Join this yard')}</button>
       <a class="link" href="#/">${t('Cancel')}</a>`;

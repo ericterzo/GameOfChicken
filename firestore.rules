@@ -66,7 +66,8 @@ service cloud.firestore {
         && uid in claimYardAfter().claimedUids
         && request.resource.data.stats.gamesPlayed == resource.data.stats.gamesPlayed + 1
         && request.resource.data.stats.wins == resource.data.stats.wins + (uid in claimYard().winnerUids ? 1 : 0)
-        && request.resource.data.stats.totalPoints == resource.data.stats.totalPoints + claimYard().members[uid].points;
+        && request.resource.data.stats.totalPoints == resource.data.stats.totalPoints
+             + claimYard().members[uid].points - claimYard().members[uid].get('headStart', 0);
       // Deleting the account must release its name in the same step.
       allow delete: if signedIn() && uid == me()
         && !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.username.lower()));
@@ -170,7 +171,12 @@ service cloud.firestore {
           && before().memberUids.size() < 12
           && after().memberUids == before().memberUids.concat([me()])
           && after().members.diff(before().members).affectedKeys().hasOnly([me()])
-          && after().members[me()].points == 0
+          // A newcomer starts on 0, or on a head start once the game is under way (the
+          // average score, worked out by the app; it never reaches the goal).
+          && after().members[me()].points == after().members[me()].get('headStart', 0)
+          && after().members[me()].points is int && after().members[me()].points >= 0
+          && (after().members[me()].points == 0
+              || (before().status == 'active' && (before().goal == null || after().members[me()].points < before().goal)))
           && !startsMeal();
       }
       // Once finished, a member may only touch their own entry, never scores.

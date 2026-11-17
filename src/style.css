@@ -340,3 +340,4 @@ input:not([type='checkbox']):not([type='radio']), select {
 /* Music on/off in the yard header */
 .yard-tools { display: flex; gap: 6px; align-items: center; flex: none; }
 .btn.music-toggle { min-width: 38px; padding: 0 8px; }
+.card .callout { background: #f8ebd0; border-radius: 12px; padding: 10px 12px; font-weight: 600; }

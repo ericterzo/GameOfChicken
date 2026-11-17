@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  countsForRecords, createYard, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
-  RuleError, settle, shoot, sizeFor, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
+  countsForRecords, createYard, totalPoints, declineInvite, isAsleep, join, leave, livePoints, liveTallies, maxMealSeconds, mealEvents, nextSleepStart, pileFraction,
+  RuleError, settle, shoot, sizeFor, joinHeadStart, choose, duelRival, allyOf, mealOf, whyCannotEat as why, yardTally, startEating, startNow, stopEating, touch, whyCannotEat,
   type Look, type NewYard, type Yard,
 } from './rules';
 
@@ -652,5 +652,26 @@ describe('a caught chicken', () => {
     expect(y.members.a.arrivedAt).toBe(s(0));
     y = touch(leave(y, 'a'), 'a', s(40)).yard;
     expect(y.members.a.arrivedAt).toBe(s(40));
+  });
+});
+
+describe('joining a game already under way', () => {
+  it('starts a newcomer on the average score, without touching the pile', () => {
+    let y = yard({ mode: 'lastGrain', goal: 1000 });
+    y.members.a.points = 300;
+    y.members.b.points = 101;
+    expect(joinHeadStart(y)).toBe(200);
+    y = join(y, 'c', 'Carl', look, s(10));
+    expect(y.members.c).toMatchObject({ points: 200, headStart: 200 });
+    expect(totalPoints(y)).toBe(401); // feed eaten: the pile is as it was
+    expect(pileFraction(y, s(10))).toBeCloseTo(1 - 401 / 1000);
+    // In their record it is score, not feed eaten.
+    const done = settle(y, y.endsAt + 1);
+    expect(yardTally(done, 'c', y.endsAt + 1)).toMatchObject({ totalPoints: 0, biggestChicken: 200 });
+  });
+
+  it('gives nothing before the game has started', () => {
+    const waiting = createYard({ name: 'W', mode: 'sundown', goal: null, endsAt: s(HOUR), hardcore: false, sleep: null, startsAt: s(600) }, 'a', 'Anna', look, 'WAIT11', T0);
+    expect(join(waiting, 'b', 'Ben', look, s(10)).members.b.points).toBe(0);
   });
 });

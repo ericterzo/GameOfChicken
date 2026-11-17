@@ -551,4 +551,8 @@ export const it: Record<string, string> = {
   '{0} won of {1}': '{0} vinte su {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} di mangime)',
   'Music': 'Musica',
+  'The game is already under way: you start with {0} points, the average of the chickens already in it.':
+    'La partita è già iniziata: parti con {0} punti, la media dei polli già presenti.',
+  'A chicken who joins a game already under way starts with the average score of the chickens already in it. That head start is not taken from the pile.':
+    'Un pollo che entra in una partita già iniziata parte con il punteggio medio dei polli già presenti. Questo vantaggio non viene tolto dal mucchio.',
 };
