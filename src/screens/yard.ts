@@ -193,7 +193,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       const px = Math.round(30 + 26 * sizeFor(y, u, now));
       const here = y.status === 'active' && (mealOf(y, u) ? t('eating') : now - m.lastSeen < PRESENCE_MS || u === uid ? t('in the yard') : '');
       const won = y.status === 'finished' && y.winnerUids.includes(u);
-      const allied = y.status === 'active' && !!allyOf(y, u);
+      const allied = y.status === 'active' && !!allyOf(y, u, now);
       return `<li class="${u === uid ? 'me' : ''}"><span class="board-chicken">${chickenSvg(m.look, { px, horns: !!m.traitor })}</span>
         <span class="board-name">${esc(m.username)}${won ? ` <span class="tag-pill win">${t('Winner')}</span>` : ''}${allied ? ` <span class="tag-pill ally">${t('Allied')}</span>` : ''}
           ${here ? `<small class="muted">${here}</small>` : ''}</span>
@@ -355,7 +355,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
     }
 
     // Allied and not yet fed: the same choice of meal, safe from the ally.
-    const ally = y.pact?.started.includes(uid) ? null : allyOf(y, uid);
+    const ally = allyOf(y, uid, now);
     const allyName = ally ? esc(y.members[ally].username) : '';
     const heading = ally ? t('You are allied with {0}', allyName) : t('The yard is yours');
     const allyNote = ally
@@ -404,7 +404,11 @@ export const yardScreen: Screen = (root, app, [id]) => {
   function paintTrigger(y: Yard, now: number): void {
     const wrap = root.querySelector<HTMLElement>('#trigger-wrap')!;
     const show = entered && y.status === 'active' && othersPresent(y, uid, now).length >= 2;
-    if (wrap.hidden !== !show) wrap.hidden = !show;
+    if (wrap.hidden !== !show) {
+      wrap.hidden = !show;
+      // Down to two: the shoot-out is over and every trigger starts again from ten.
+      if (!show && clicks !== COCK) { clicks = COCK; saveClicks(); }
+    }
     const label = t('Shoot') + (clicks ? '?'.repeat(clicks) : '!');
     const b = root.querySelector<HTMLButtonElement>('#trigger')!;
     if (b.textContent !== label) b.textContent = label;
@@ -524,7 +528,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
       return;
     }
     void busy(trigger, async () => {
-      const shot = await drawGun(id, app.profile);
+      const shot = await drawGun(id, app.profile, 2); // ignored if only two chickens are left
       clicks = COCK;
       saveClicks();
       if (shot?.betrayal) toast(t('Bang! You betrayed {0}. The whole yard will see your horns.', shot.victim), 'good');

@@ -508,7 +508,10 @@ describe('the gun', () => {
 });
 
 describe('ally or fight', () => {
-  const standoff = (over: Partial<NewYard> = {}) => touch(touch(yard(over), 'a', s(0)).yard, 'b', s(1)).yard;
+  // Three chickens joined the yard; Anna and Ben are the two in it.
+  const three = (over: Partial<NewYard> = {}) => join(yard(over), 'c', 'Carl', look, T0);
+  const standoff = (over: Partial<NewYard> = {}) => touch(touch(three(over), 'a', s(0)).yard, 'b', s(1)).yard;
+  const allies = (over: Partial<NewYard> = {}) => choose(choose(standoff(over), 'a', s(2), 'ally').yard, 'b', s(3), 'ally').yard;
 
   it('waits for both secret choices, and an alliance lets both feed side by side', () => {
     const one = choose(standoff(), 'a', s(2), 'ally');
@@ -516,24 +519,65 @@ describe('ally or fight', () => {
     expect(() => choose(one.yard, 'a', s(3), 'fight')).toThrow(RuleError); // no changing your mind
     const both = choose(one.yard, 'b', s(4), 'ally');
     expect(both.outcome).toEqual({ kind: 'allied', uids: ['a', 'b'] });
-    expect(allyOf(both.yard, 'a')).toBe('b');
+    expect(allyOf(both.yard, 'a', s(5))).toBe('b');
     expect(duelRival(both.yard, 'a', s(5))).toBeNull();
-    // Each picks a secret length and they feed together; neither catches the other.
     let y = startEating(both.yard, 'a', s(10), 60).yard;
     expect(why(y, 'b', s(11))).toBeNull();
     y = startEating(y, 'b', s(11), 600).yard;
     y = touch(touch(y, 'a', s(20)).yard, 'b', s(21)).yard;
-    expect(mealOf(y, 'a')?.allyUid).toBe('b');
-    expect(mealOf(y, 'b')?.allyUid).toBe('a');
+    expect(mealOf(y, 'a')).not.toBeNull();
+    expect(mealOf(y, 'b')).not.toBeNull();
     // When Anna's meal is over she has eaten it all and left the yard.
     y = settle(y, s(80));
     expect(y.members.a.points).toBe(60);
     expect(y.members.a.lastSeen).toBe(0);
     expect(mealOf(y, 'b')).not.toBeNull();
-    // Anyone else still catches an allied chicken.
-    const r = touch(join(y, 'c', 'Carl', look, s(100)), 'c', s(100));
-    expect(r.interrupted).toEqual([{ victimUid: 'b', byUid: 'c', pointsLost: 89, pointsGained: 29 }]);
+  });
+
+  it('lasts until the longer chosen meal runs out: a finished ally may eat again, then they are rivals', () => {
+    let y = startEating(allies(), 'a', s(10), 60).yard; // Anna chose a minute
+    y = startEating(y, 'b', s(11), 300).yard; // Ben chose five
+    y = settle(y, s(80)); // Anna is done and gone
+    // Anna comes back while Ben is still eating: she cannot catch him, but may eat again, still safe from him.
+    let r = touch(y, 'a', s(100));
+    expect(r.interrupted).toEqual([]);
+    y = startEating(r.yard, 'a', s(100), 3600).yard;
+    y = touch(y, 'b', s(200)).yard;
+    expect(mealOf(y, 'a')).not.toBeNull();
+    // Ben's five minutes run out at 311: the alliance is over and Ben leaves, catching nobody on his way out.
+    const out = touch(y, 'b', s(315));
+    expect(out.interrupted).toEqual([]);
+    expect(out.yard.members.b.lastSeen).toBe(0);
+    expect(out.yard.members.b.points).toBe(300);
+    // Back in, he catches his ex-ally.
+    y = settle(y, s(320));
+    expect(y.members.b.lastSeen).toBe(0);
+    expect(allyOf(y, 'a', s(320))).toBeNull();
+    r = touch(y, 'b', s(330));
+    expect(r.interrupted[0]).toMatchObject({ victimUid: 'a', byUid: 'b', pointsLost: 230 });
     expect(r.yard.pact).toBeNull();
+  });
+
+  it('counts leaving without choosing a length as zero', () => {
+    let y = startEating(allies(), 'a', s(10), 60).yard;
+    y = leave(y, 'b');
+    y = settle(y, s(20));
+    expect(y.pact!.ends.b).toBe(s(3));
+    expect(allyOf(y, 'a', s(20))).toBe('b'); // Anna's minute still holds
+    y = settle(y, s(80));
+    expect(y.pact).toBeNull();
+  });
+
+  it('is broken by any other chicken walking in, who catches whoever is eating', () => {
+    let y = startEating(allies(), 'a', s(10), 60).yard;
+    y = startEating(y, 'b', s(11), 600).yard;
+    const r = touch(y, 'c', s(40));
+    expect(r.interrupted.map((i) => i.victimUid).sort()).toEqual(['a', 'b']);
+    expect(r.yard.pact).toBeNull();
+    // Allies who had not eaten yet lose the alliance too: it is a three-way standoff.
+    const idle = touch(allies(), 'c', s(5)).yard;
+    expect(allyOf(idle, 'a', s(5))).toBeNull();
+    expect(why(idle, 'a', s(6))).toBe('Another chicken is watching. Wait them out.');
   });
 
   it('throws out a chicken that offers an alliance to one that fights, and both when both fight', () => {
@@ -548,19 +592,26 @@ describe('ally or fight', () => {
     expect(brawl.yard.members.b).toMatchObject({ outUntil: s(3) + 12 * 60_000, outWhy: 'brawl' });
   });
 
-  it('only offers the choice to exactly two chickens with nobody eating', () => {
-    const three = touch(join(standoff(), 'c', 'Carl', look, s(2)), 'c', s(2)).yard;
-    expect(duelRival(three, 'a', s(3))).toBeNull();
-    expect(() => choose(three, 'a', s(3), 'ally')).toThrow(RuleError);
-    expect(duelRival(touch(yard(), 'a', s(0)).yard, 'a', s(1))).toBeNull(); // alone
+  it('only offers the choice to exactly two chickens, nobody eating, in a yard at least three joined', () => {
+    const crowd = touch(standoff(), 'c', s(2)).yard;
+    expect(duelRival(crowd, 'a', s(3))).toBeNull();
+    expect(() => choose(crowd, 'a', s(3), 'ally')).toThrow(RuleError);
+    expect(duelRival(touch(three(), 'a', s(0)).yard, 'a', s(1))).toBeNull(); // alone
+    const pair = touch(touch(yard(), 'a', s(0)).yard, 'b', s(1)).yard; // only two ever joined
+    expect(duelRival(pair, 'a', s(2))).toBeNull();
     // A half-made choice lapses when the other chicken walks away.
     const half = choose(standoff(), 'a', s(2), 'fight').yard;
     expect(settle(leave(half, 'b'), s(3)).duel).toBeNull();
   });
 
+  it('fires the trigger only while there are three or more chickens in the yard', () => {
+    const crowd = touch(standoff(), 'c', s(2)).yard;
+    expect(shoot(crowd, 'a', s(3), 0.5, 180_000, 2).victimUid).not.toBeNull();
+    expect(shoot(standoff(), 'a', s(3), 0.5, 180_000, 2).victimUid).toBeNull();
+  });
+
   it('shares the pile between allies in Last Grain', () => {
-    let y = standoff({ mode: 'lastGrain', goal: 100 });
-    y = choose(choose(y, 'a', s(2), 'ally').yard, 'b', s(3), 'ally').yard;
+    let y = allies({ mode: 'lastGrain', goal: 100 });
     y = startEating(y, 'a', s(10), 80).yard;
     y = startEating(y, 'b', s(11), 600).yard;
     expect(mealOf(y, 'b')!.endsAt).toBe(s(11 + 20)); // only 20 feed was left unclaimed
@@ -570,15 +621,14 @@ describe('ally or fight', () => {
   });
 
   it('makes shooting your ally a betrayal: the ally loses the meal, the traitor gets horns', () => {
-    let y = choose(choose(standoff(), 'a', s(2), 'ally').yard, 'b', s(3), 'ally').yard;
-    y = startEating(y, 'a', s(10), 600).yard;
+    let y = startEating(allies(), 'a', s(10), 600).yard;
     y = startEating(y, 'b', s(11), 600).yard;
     const shot = shoot(y, 'a', s(41), 0, 180_000);
     expect(shot).toMatchObject({ victimUid: 'b', betrayal: true, lost: 30 });
     expect(shot.yard.members.a.traitor).toBe(true);
     expect(shot.yard.members.b).toMatchObject({ outWhy: 'shot', outBy: 'a', feedLost: 30, mealsLost: 1 });
     expect(mealOf(shot.yard, 'b')).toBeNull();
-    expect(mealOf(shot.yard, 'a')?.allyUid).toBeUndefined(); // no longer protected
+    expect(allyOf(shot.yard, 'a', s(42))).toBeNull();
     expect(shot.yard.shot).toEqual({ byUid: 'a', victimUid: 'b', at: s(41), betrayal: true });
     // Back after the wait, Ben catches the traitor.
     const back = touch(shot.yard, 'b', s(41 + 181));

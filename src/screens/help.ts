@@ -42,6 +42,7 @@ export function helpScreen(root: HTMLElement): void {
       <ul>
         <li>${t('Each chooses in secret. You see when the other chicken has decided, but not what they chose.')}</li>
         <li>${t('A choice cannot be taken back. If either chicken leaves before both have chosen, the choice is forgotten.')}</li>
+        <li>${t('This only happens in yards that at least three chickens have joined. With just two, there is nobody to ally against, so it stays a plain standoff.')}</li>
       </ul>
       <dl class="modes-help">
         <div><dt>${t('Both ally')}</dt><dd>${t('You become allies. Each of you picks how long to feed, and that length stays secret, even from your ally. You can feed at the same time, side by side, and neither of you can catch the other.')}</dd></div>
@@ -51,11 +52,14 @@ export function helpScreen(root: HTMLElement): void {
 
       <h3>${t('Feeding as allies')}</h3>
       <ul>
-        <li>${t('Each ally gets one allied meal. Start it whenever you like while the alliance stands.')}</li>
+        <li>${t('Each ally picks a secret meal length. The alliance lasts until the longer of the two runs out.')}</li>
+        <li>${t('If you leave the yard without picking a length, your length counts as zero.')}</li>
         <li>${t('Your ally cannot catch you, but any other chicken who walks in can, and catches both of you if you are both eating.')}</li>
         <li>${t('When your meal is over, or you stop it early, you keep the feed and your chicken leaves the yard.')}</li>
+        <li>${t('While the alliance lasts you can come back and eat again, still safe from your ally and still unable to catch them.')}</li>
+        <li>${t('Once the alliance is over you are rivals again, and can catch each other as usual.')}</li>
+        <li>${t('If any other chicken walks in, the alliance is broken: any ally who is eating is caught, and it is a standoff again.')}</li>
         <li>${t('In Last Grain, allies share what is left of the pile: whoever starts second can only eat what the first has not already claimed.')}</li>
-        <li>${t('The alliance ends once both allies have had their meal, or walked away without one.')}</li>
       </ul>
 
       <h3>${t('Three or more chickens: the trigger')}</h3>
@@ -64,6 +68,7 @@ export function helpScreen(root: HTMLElement): void {
         <li>${t('Every press takes away one question mark. Nobody else can see how many you have left.')}</li>
         <li>${t('After ten presses it turns into <strong>Shoot!</strong>. Press it and you shoot one of the other chickens, picked at random.')}</li>
         <li>${t('A chicken that is shot is thrown out of the yard for 2 to 4 minutes. Your trigger then starts again from ten.')}</li>
+        <li>${t('As soon as only two chickens are left in the yard, any shot not yet fired is ignored, every trigger goes back to ten, and the two chickens get Ally and Fight instead.')}</li>
       </ul>
 
       <h3>${t('Thrown out')}</h3>

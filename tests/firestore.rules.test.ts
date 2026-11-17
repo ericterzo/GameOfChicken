@@ -307,7 +307,7 @@ describe('yards', () => {
 
   it('lets allies start only their own allied meal, and logs standoffs in their own name', async () => {
     const now = Date.now();
-    let y = touch(touch(join(freshYard(), 'ben', 'Ben', look, now), 'anna', now).yard, 'ben', now).yard;
+    let y = touch(touch(join(join(freshYard(), 'ben', 'Ben', look, now), 'carl', 'Carl', look, now), 'anna', now).yard, 'ben', now).yard;
     y = choose(choose(y, 'anna', now, 'ally').yard, 'ben', now, 'ally').yard;
     await seed(y);
     const mine = startEating(y, 'anna', Date.now(), 60).yard;

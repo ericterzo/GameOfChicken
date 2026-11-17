@@ -493,7 +493,7 @@ export const MAX_NOTE = 300;
 export interface GunShot { victim: string; betrayal: boolean }
 
 /** Shoot a random other chicken in the yard, if there is one. */
-export async function drawGun(yardId: string, me: Profile): Promise<GunShot | null> {
+export async function drawGun(yardId: string, me: Profile, minOthers = 1): Promise<GunShot | null> {
   return yardTx(async (tx) => {
     const snap = await tx.get(yardRef(yardId));
     if (!snap.exists()) return null;
@@ -502,7 +502,7 @@ export async function drawGun(yardId: string, me: Profile): Promise<GunShot | nu
     let shot: rules.ShotResult;
     try {
       const span = rules.SHOT_MAX_MS - rules.SHOT_MIN_MS;
-      shot = rules.shoot(before, me.uid, now, Math.random(), rules.SHOT_MIN_MS + Math.random() * span);
+      shot = rules.shoot(before, me.uid, now, Math.random(), rules.SHOT_MIN_MS + Math.random() * span, minOthers);
     } catch {
       return null;
     }
