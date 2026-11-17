@@ -550,4 +550,5 @@ export const it: Record<string, string> = {
   '{0} wins the yard': '{0} vince l’aia',
   '{0} won of {1}': '{0} vinte su {1}',
   '{0} {1}× ({2} feed)': '{0} {1}× ({2} di mangime)',
+  'Music': 'Musica',
 };

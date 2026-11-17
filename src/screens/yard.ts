@@ -13,6 +13,7 @@ import { yardReport } from '../game/report';
 import { chickenSvg } from '../ui/chicken';
 import { reportHtml } from '../ui/gameReport';
 import { playCry } from '../ui/cries';
+import { music } from '../ui/music';
 import { busy, clock, dateTime, esc, num, span, toast } from '../ui/dom';
 import { t } from '../i18n';
 import { sceneClock, yardScene, type SceneChicken } from '../ui/yardScene';
@@ -146,10 +147,16 @@ export const yardScreen: Screen = (root, app, [id]) => {
       <div class="yard-title"><h1>${esc(y.name)}</h1>
         <p><span class="tag-pill">${t(MODE_NAMES[y.mode])}</span>${y.hardcore ? `<span class="tag-pill hot">${t('Hardcore')}</span>` : ''}
         <span class="muted" title="${esc(dateTime(y.endsAt))}">${when}</span></p></div>
-      <button class="btn small" id="share" type="button">${t('Invite')} · ${esc(y.joinCode)}</button>`;
+      <div class="yard-tools"><button class="btn small" id="share" type="button">${t('Invite')} · ${esc(y.joinCode)}</button>
+        <button class="btn small music-toggle" id="music-toggle" type="button" aria-pressed="${music.on}" title="${t('Music')}" aria-label="${t('Music')}">${music.on ? '🎵' : '🔇'}</button></div>`;
     if (head.dataset.html === html) return;
     head.dataset.html = html;
     head.innerHTML = html;
+    head.querySelector<HTMLButtonElement>('#music-toggle')!.onclick = () => {
+      music.setOn(!music.on);
+      head.dataset.html = '';
+      paint();
+    };
     head.querySelector<HTMLButtonElement>('#share')!.onclick = async () => {
       const url = `${location.origin}${location.pathname}#/join/${y.joinCode}`;
       const text = t('Join my chicken yard “{0}”. Code: {1}', y.name, y.joinCode);
@@ -438,10 +445,19 @@ export const yardScreen: Screen = (root, app, [id]) => {
     b.classList.toggle('cocked', !clicks);
   }
 
+  /** Chill while I eat or have the yard to myself; tense in a standoff; silent once it is over. */
+  function paintMusic(y: Yard, now: number): void {
+    const ally = allyOf(y, uid, now);
+    const standoff = y.status === 'active' && !isAsleep(y.sleep, now) && !mealOf(y, uid)
+      && othersPresent(y, uid, now).some((u) => u !== ally);
+    music.setMode(!entered || y.status === 'finished' ? 'off' : standoff ? 'tense' : 'chill');
+  }
+
   function paint(): void {
     if (!alive || !yard) return;
     const now = Date.now();
     const y = settle(yard, now);
+    paintMusic(y, now);
     paintTrigger(y, now);
     if (yard.pact?.meals[uid] && !mealOf(y, uid) && !leaving) {
       leaving = true;
@@ -603,6 +619,7 @@ export const yardScreen: Screen = (root, app, [id]) => {
   return () => {
     void walkOut();
     alive = false;
+    music.setMode('off');
     stopWatching();
     stopBoard?.();
     clearTimeout(notMember);

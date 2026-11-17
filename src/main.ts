@@ -10,6 +10,7 @@ import { joinScreen, newYardScreen } from './screens/setup';
 import { yardScreen } from './screens/yard';
 import { getLang, LANG_GIFT, langMenu, onLang, t, wireLangMenu } from './i18n';
 import { unlockAudio } from './ui/cries';
+import { music } from './ui/music';
 import { esc, toast } from './ui/dom';
 
 const root = document.getElementById('app')!;
@@ -33,6 +34,7 @@ const ROUTES: Record<string, Screen> = {
 function route(): void {
   cleanup?.();
   cleanup = undefined;
+  music.setMode('off'); // only a yard plays music
   profileListeners.clear();
   window.scrollTo(0, 0);
 
@@ -117,7 +119,7 @@ onLang(() => {
 window.addEventListener('hashchange', route);
 
 // Phones only allow sound after a touch: the first one unlocks battle cries.
-const unlock = () => { unlockAudio(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
+const unlock = () => { unlockAudio(); music.start(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
 window.addEventListener('pointerdown', unlock, true);
 window.addEventListener('keydown', unlock, true);
 

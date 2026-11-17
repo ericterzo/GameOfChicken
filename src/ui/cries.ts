@@ -2,6 +2,7 @@
 // screen changes (a caught chicken is sent home mid-cry), and cries never
 // talk over each other. Chickens without a recording squawk instead.
 import { CRY_SECONDS, getCry } from '../api';
+import { music } from './music';
 
 let player: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;
@@ -90,7 +91,9 @@ export function playCry(uid: string, onStart?: (ms: number) => void): Promise<vo
   const fetching = cryOf(uid);
   queue = queue.then(async () => {
     const blob = await fetching;
-    onStart?.(blob ? CRY_SECONDS * 1000 : 1000);
+    const ms = blob ? CRY_SECONDS * 1000 : 1000;
+    music.duck(ms); // so the cry can be heard over the music
+    onStart?.(ms);
     await (blob ? playBlob(blob) : squawk());
   }).catch(() => {});
   return queue;
